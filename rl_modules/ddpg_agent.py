@@ -21,6 +21,10 @@ class ddpg_agent:
         # create the network
         self.actor_network = actor(env_params)
         self.critic_network = critic(env_params)
+        # load paramters
+        # model_path = 'saved_models/XarmHandover-v0/model.pt'
+        # o_mean, o_std, g_mean, g_std, model = torch.load(model_path, map_location=lambda storage, loc: storage)``
+        # self.actor_network.load_state_dict(model)
         # sync the networks across the cpus
         sync_networks(self.actor_network)
         sync_networks(self.critic_network)
@@ -45,7 +49,11 @@ class ddpg_agent:
         self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
         # create the normalizer
         self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
+        # self.o_norm.std = o_std
+        # self.o_norm.mean = o_mean
         self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
+        # self.g_norm.std = g_std
+        # self.g_norm.mean = g_mean
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             if not os.path.exists(self.args.save_dir):
@@ -111,10 +119,10 @@ class ddpg_agent:
                 self._soft_update_target_network(self.actor_target_network, self.actor_network)
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
             # start to do the evaluation
-            success_rate = self._eval_agent()
+            data = self._eval_agent()
             if MPI.COMM_WORLD.Get_rank() == 0:
-                print('[{}] epoch is: {}, eval success rate is: {:.3f}'.format(datetime.now(), epoch, success_rate))
-                torch.save([self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std, self.actor_network.state_dict()], \
+                print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
+                torch.save([self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std, self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + '/model.pt')
 
     # pre_process the inputs
@@ -235,8 +243,10 @@ class ddpg_agent:
     # do the evaluation
     def _eval_agent(self):
         total_success_rate = []
+        total_reward = []
         for _ in range(self.args.n_test_rollouts):
             per_success_rate = []
+            per_reward = []
             observation = self.env.reset()
             obs = observation['observation']
             g = observation['desired_goal']
@@ -246,12 +256,20 @@ class ddpg_agent:
                     pi = self.actor_network(input_tensor)
                     # convert the actions
                     actions = pi.detach().cpu().numpy().squeeze()
-                observation_new, _, _, info = self.env.step(actions)
+                observation_new, reward, _, info = self.env.step(actions)
                 obs = observation_new['observation']
                 g = observation_new['desired_goal']
                 per_success_rate.append(info['is_success'])
+                per_reward.append(reward)
             total_success_rate.append(per_success_rate)
+            total_reward.append(per_reward)
         total_success_rate = np.array(total_success_rate)
+        total_reward = np.array(total_reward)
         local_success_rate = np.mean(total_success_rate[:, -1])
+        local_reward = np.mean(total_reward[:, -1])
         global_success_rate = MPI.COMM_WORLD.allreduce(local_success_rate, op=MPI.SUM)
-        return global_success_rate / MPI.COMM_WORLD.Get_size()
+        global_reward = MPI.COMM_WORLD.allreduce(local_reward, op=MPI.SUM)
+        return {
+            'success_rate': global_success_rate / MPI.COMM_WORLD.Get_size(),
+            'reward': global_reward / MPI.COMM_WORLD.Get_size(),
+        }

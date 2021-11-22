@@ -107,6 +107,7 @@ venv.bak/
 .DS_Store
 
 #saved_model
+saved_model/
 *.pth
 
 *.pt
