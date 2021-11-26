@@ -19,17 +19,20 @@ def process_inputs(o, g, o_mean, o_std, g_mean, g_std, args):
 if __name__ == '__main__':
     args = get_args()
     # load the model param
-    model_path = args.save_dir + args.env_name + '/model.pt'
+    # model_path = args.save_dir + args.env_name + '/model.pt'
+    model_path = '/Users/reedpan/Desktop/Research/hindsight-experience-replay/saved_models/fix_env_15.pt'
     o_mean, o_std, g_mean, g_std, model, _ = torch.load(model_path, map_location=lambda storage, loc: storage)
     # create the environment
-    env = gym.make(args.env_name,
-        config = {
-            'init_grasp_rate': 0.0,
-            'goal_ground_rate': 0.0,
-            'reward_type': 'sparse', 
-            'action_type': 'continous',
-            'render': True
-        }
+    config = {
+        'goal_shape': 'ground', 
+        'num_obj': 2,
+        'GUI': True, 
+        'same_side_rate': 0.5,
+        'use_stand': False,
+        'lego_length': 0.15
+    }
+    env = gym.make(args.env_name, 
+        config = config
     )
     # get the env param
     observation = env.reset()
@@ -43,19 +46,21 @@ if __name__ == '__main__':
     actor_network = actor(env_params)
     actor_network.load_state_dict(model)
     actor_network.eval()
-    for i in range(args.demo_length):
-        observation = env.reset()
-        # start to do the demo
-        obs = observation['observation']
-        g = observation['desired_goal']
-        for t in range(env._max_episode_steps):
-            inputs = process_inputs(obs, g, o_mean, o_std, g_mean, g_std, args)
-            with torch.no_grad():
-                pi = actor_network(inputs)
-            action = pi.detach().numpy().squeeze()
-            # put actions into the environment
-            observation_new, reward, _, info = env.step(action)
-            obs = observation_new['observation']
-            # env.render()
-            # time.sleep(0.02)
-        print('the episode is: {}, is success: {}'.format(i, info['is_success']))
+    observation = env.reset()
+    # start to do the demo
+    obs = observation['observation']
+    g = observation['desired_goal']
+    # for t in range(env._max_episode_steps):
+    while True:
+        inputs = process_inputs(obs, g, o_mean, o_std, g_mean, g_std, args)
+        with torch.no_grad():
+            pi = actor_network(inputs)
+        action = pi.detach().numpy().squeeze()
+        # put actions into the environment
+        observation_new, reward, done , info = env.step(action)
+        if done: 
+            print('is success: {}'.format(info['is_success']))
+            observation_new = env.reset()
+            g = observation_new['desired_goal']
+        obs = observation_new['observation']
+        time.sleep(0.03)
