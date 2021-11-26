@@ -28,7 +28,10 @@ def launch(args):
     config = {
         'goal_shape': 'ground', 
         'num_obj': 2,
-        'GUI': False
+        'GUI': False, 
+        'same_side_rate': 0.5,
+        'use_stand': False,
+        'lego_length': 0.15
     }
     env = gym.make(args.env_name, 
         config = config

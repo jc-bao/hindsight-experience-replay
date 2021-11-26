@@ -23,9 +23,14 @@ class her_sampler:
         future_offset = np.random.uniform(size=batch_size) * (T - t_samples)
         future_offset = future_offset.astype(int)
         future_t = (t_samples + 1 + future_offset)[her_indexes]
-        # replace go with achieved goal
+        # replace goal with achieved goal
         future_ag = episode_batch['ag'][episode_idxs[her_indexes], future_t]
-        transitions['g'][her_indexes] = future_ag
+        # CHANGE1: only change goal when ag is not same with ag
+        for i in range(len(future_ag)):
+            if not (future_ag[i][:3] == transitions['ag'][her_indexes][i][:3]).all():
+                transitions['g'][her_indexes][i][:3] = future_ag[i][:3]
+            if not (future_ag[i][3:6] == transitions['ag'][her_indexes][i][3:6]).all():
+                transitions['g'][her_indexes][i][3:6] = future_ag[i][3:6]
         # to get the params to re-compute reward
         transitions['r'] = np.expand_dims([self.reward_func(transitions['ag_next'][i], transitions['g'][i], None) for i in range(len(transitions['g']))], 1)
         transitions = {k: transitions[k].reshape(batch_size, *transitions[k].shape[1:]) for k in transitions.keys()}
