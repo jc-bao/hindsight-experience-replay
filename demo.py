@@ -20,14 +20,14 @@ if __name__ == '__main__':
     args = get_args()
     # load the model param
     # model_path = args.save_dir + args.env_name + '/model.pt'
-    model_path = '/Users/reedpan/Desktop/Research/hindsight-experience-replay/saved_models/fix_env_15.pt'
+    model_path = '/Users/reedpan/Downloads/model.pt'
     o_mean, o_std, g_mean, g_std, model, _ = torch.load(model_path, map_location=lambda storage, loc: storage)
     # create the environment
     config = {
         'goal_shape': 'ground', 
         'num_obj': 2,
         'GUI': True, 
-        'same_side_rate': 0.5,
+        'same_side_rate': 0.0,
         'use_stand': False,
         'lego_length': 0.15
     }
