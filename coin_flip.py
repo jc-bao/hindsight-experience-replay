@@ -6,14 +6,24 @@ class CoinFlip(gym.Env):
     def __init__(self, config):
         self.n = config['n']
         self.reset()
-        self.action_space = spaces.Discrete(config['n'])
-        self.observation_space = spaces.Discrete(config['n']*2)
+        self.achieved_goal_index = 0
+        self.desired_goal_index = config['n']
+        self.action_space = spaces.Box(low = np.array([0]), high = np.array([config['n']+1])) # add not move
+        self.observation_space = spaces.Dict(dict(
+            observation=spaces.Discrete(1),
+            achieved_goal=spaces.Discrete(config['n']),
+            desired_goal=spaces.Discrete(config['n']),
+        ))
 
     def step(self, act):
         self.num_steps += 1
-        self.coin[act] = not self.coin[act]
+        if act == self.n+1:
+            act -= 1
+        act = int(act)
+        if not act == self.n:
+            self.coin[act] = not self.coin[act]
         obs = {
-            'observation': [],
+            'observation': [0],
             'achieved_goal': self.coin,
             'desired_goal': self.goal
         }
@@ -30,13 +40,13 @@ class CoinFlip(gym.Env):
         self.goal = [np.random.uniform() < 0.5 for _ in range(self.n)]
         self.num_steps = 0
         return {
-            'observation': [],
+            'observation': [0],
             'achieved_goal': self.coin,
             'desired_goal': self.goal
         }
 
     def compute_reward(self, achieved_goal, desired_goal, info):
-        return float(self.coin==self.goal)
+        return float((achieved_goal==desired_goal).all())
         
 gym.register(
     id='CoinFlip-v0',

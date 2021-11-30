@@ -7,6 +7,7 @@ from rl_modules.ddpg_agent import ddpg_agent
 import random
 import torch
 import gym_xarm, gym_naive
+import coin_flip
 
 """
 train the agent, the MPI part code is copy from openai baselines(https://github.com/openai/baselines/blob/master/baselines/her)
@@ -31,7 +32,8 @@ def launch(args):
         'GUI': False, 
         'same_side_rate': 0.5,
         'use_stand': False,
-        'lego_length': 0.15
+        'lego_length': 0.15,
+        # 'n': 12
     }
     env = gym.make(args.env_name, 
         config = config

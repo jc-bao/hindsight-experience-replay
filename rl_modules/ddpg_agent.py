@@ -22,9 +22,10 @@ class ddpg_agent:
         self.actor_network = actor(env_params)
         self.critic_network = critic(env_params)
         # load paramters
-        # model_path = 'saved_models/XarmHandover-v0/model.pt'
-        # o_mean, o_std, g_mean, g_std, model = torch.load(model_path, map_location=lambda storage, loc: storage)``
-        # self.actor_network.load_state_dict(model)
+        model_path = '/rl/hindsight-experience-replay/rearrange_2/XarmHandover-v0/model.pt'
+        o_mean, o_std, g_mean, g_std,actor_model, critic_model = torch.load(model_path, map_location=lambda storage, loc: storage)
+        self.actor_network.load_state_dict(actor_model)
+        self.critic_network.load_state_dict(critic_model)
         # sync the networks across the cpus
         sync_networks(self.actor_network)
         sync_networks(self.critic_network)
@@ -49,11 +50,11 @@ class ddpg_agent:
         self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
         # create the normalizer
         self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
-        # self.o_norm.std = o_std
-        # self.o_norm.mean = o_mean
+        self.o_norm.std = o_std
+        self.o_norm.mean = o_mean
         self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
-        # self.g_norm.std = g_std
-        # self.g_norm.mean = g_mean
+        self.g_norm.std = g_std
+        self.g_norm.mean = g_mean
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             if not os.path.exists(self.args.save_dir):
