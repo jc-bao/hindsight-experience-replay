@@ -25,18 +25,18 @@ class her_sampler:
         future_t = (t_samples + 1 + future_offset)[her_indexes]
         # replace goal with achieved goal
         future_ag = episode_batch['ag'][episode_idxs[her_indexes], future_t]
-        # transitions['g'][her_indexes] = future_ag
+        transitions['g'][her_indexes] = future_ag
         # CHANGE1: only change goal when ag is not same with ag
-        for i in range(len(future_ag)):
-            if not (future_ag[i][:3] == transitions['ag'][her_indexes[i]][:3]).all():
-                transitions['g'][her_indexes[i]][:3] = future_ag[i][:3]
+        # for i in range(len(future_ag)):
+        #     if not (future_ag[i][:3] == transitions['ag'][her_indexes[i]][:3]).all():
+        #         transitions['g'][her_indexes[i]][:3] = future_ag[i][:3]
         #     else:
         #         if transitions['g'][her_indexes[i]][0] > 0: 
         #             transitions['g'][her_indexes[i]][:2] = np.random.uniform([0.1, -0.18], [0.3, 0.18])
         #         else: 
         #             transitions['g'][her_indexes[i]][:2] = np.random.uniform([-0.3, -0.18], [-0.1, 0.18])
-            if not (future_ag[i][3:6] == transitions['ag'][her_indexes[i]][3:6]).all():
-                transitions['g'][her_indexes[i]][3:6] = future_ag[i][3:6]
+        #     if not (future_ag[i][3:6] == transitions['ag'][her_indexes[i]][3:6]).all():
+        #         transitions['g'][her_indexes[i]][3:6] = future_ag[i][3:6]
         #     else:
         #         if transitions['g'][her_indexes[i]][0] > 0: 
         #             transitions['g'][her_indexes[i]][3:5] = np.random.uniform([0.1, -0.18], [0.3, 0.18])
