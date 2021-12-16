@@ -130,11 +130,10 @@ class ddpg_agent:
                             self.model_path + '/model.pt')
             if self.args.curriculum and data['success_rate'] > 0.5:
                 if curriculum_param < 1: 
-                    curriculum_param += 0.2
-                # self.env.change({'same_side_rate': curriculum_param})
-                self.env.change({'heavy_object_rate': curriculum_param})
+                    curriculum_param += 0.1
+                self.env.change(curriculum_param)
                 if MPI.COMM_WORLD.Get_rank() == 0:
-                    print(f"same_side_rate: {curriculum_param-0.2} -> {curriculum_param}")
+                    print(f"same_side_rate: {curriculum_param-0.1} -> {curriculum_param}")
 
     # pre_process the inputs
     def _preproc_inputs(self, obs, g):
