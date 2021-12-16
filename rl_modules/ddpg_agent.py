@@ -23,8 +23,9 @@ class ddpg_agent:
         self.critic_network = critic(env_params)
         # load paramters
         if args.resume:
-            path = os.path.join(self.args.save_dir, self.args.env_name, 'model.pt')
+            path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp, 'model.pt')
             o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+            print('loaded done!')
             self.actor_network.load_state_dict(actor_model)
             self.critic_network.load_state_dict(critic_model)
         # sync the networks across the cpus
