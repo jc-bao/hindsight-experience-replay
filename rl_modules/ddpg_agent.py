@@ -22,10 +22,11 @@ class ddpg_agent:
         self.actor_network = actor(env_params)
         self.critic_network = critic(env_params)
         # load paramters
-        # model_path = '/rl/hindsight-experience-replay/rearrange_2/XarmHandover-v0/model.pt'
-        # o_mean, o_std, g_mean, g_std,actor_model, critic_model = torch.load(model_path, map_location=lambda storage, loc: storage)
-        # self.actor_network.load_state_dict(actor_model)
-        # self.critic_network.load_state_dict(critic_model)
+        if args.resume:
+            path = os.path.join(self.args.save_dir, self.args.env_name, 'model.pt')
+            o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+            self.actor_network.load_state_dict(actor_model)
+            self.critic_network.load_state_dict(critic_model)
         # sync the networks across the cpus
         sync_networks(self.actor_network)
         sync_networks(self.critic_network)
@@ -50,17 +51,18 @@ class ddpg_agent:
         self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
         # create the normalizer
         self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
-        # self.o_norm.std = o_std
-        # self.o_norm.mean = o_mean
         self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
-        # self.g_norm.std = g_std
-        # self.g_norm.mean = g_mean
+        if args.resume:
+            self.o_norm.std = o_std
+            self.o_norm.mean = o_mean
+            self.g_norm.std = g_std
+            self.g_norm.mean = g_mean
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             if not os.path.exists(self.args.save_dir):
                 os.mkdir(self.args.save_dir)
             # path to save the model
-            self.model_path = os.path.join(self.args.save_dir, self.args.env_name)
+            self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp)
             if not os.path.exists(self.model_path):
                 os.mkdir(self.model_path)
 
@@ -70,6 +72,7 @@ class ddpg_agent:
 
         """
         # start to collect samples
+        curriculum_param = 0
         for epoch in range(self.args.n_epochs):
             for _ in range(self.args.n_cycles):
                 mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
@@ -125,6 +128,13 @@ class ddpg_agent:
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
                 torch.save([self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std, self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + '/model.pt')
+            if self.args.curriculum and data['success_rate'] > 0.5:
+                if curriculum_param < 1: 
+                    curriculum_param += 0.2
+                # self.env.change({'same_side_rate': curriculum_param})
+                self.env.change({'heavy_object_rate': curriculum_param})
+                if MPI.COMM_WORLD.Get_rank() == 0:
+                    print(f"same_side_rate: {curriculum_param-0.2} -> {curriculum_param}")
 
     # pre_process the inputs
     def _preproc_inputs(self, obs, g):

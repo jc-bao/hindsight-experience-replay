@@ -6,8 +6,7 @@ from mpi4py import MPI
 from rl_modules.ddpg_agent import ddpg_agent
 import random
 import torch
-import gym_xarm, gym_naive
-import coin_flip
+import gym_xarm, gym_naive, panda_gym
 
 """
 train the agent, the MPI part code is copy from openai baselines(https://github.com/openai/baselines/blob/master/baselines/her)
@@ -35,17 +34,14 @@ def launch(args):
     #     'lego_length': 0.15,
     #     # 'n': 12
     # }
-    # env = gym.make(args.env_name, 
-    #     config = config
-    # )
-    config = {
-        'env': 'NaiveReach-v1',
-        'dim': 2,
-        'reward_type': 'sparse'
-    }
-    env = gym.make(config['env'], 
-        config = config
+    env = gym.make(args.env_name, 
     )
+    # config = {
+    #     'env': 'PandaPickAndPlace2-v2',
+    # }
+    # env = gym.make(config['env']
+        # config = config
+    # )
     # env = gym.make('FetchReach-v1')
     # set random seeds for reproduce
     env.seed(args.seed + MPI.COMM_WORLD.Get_rank())
