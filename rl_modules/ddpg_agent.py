@@ -1,6 +1,7 @@
 import torch
 import os
 from datetime import datetime
+from time import time
 import numpy as np
 from mpi4py import MPI
 from mpi_utils.mpi_utils import sync_networks, sync_grads
@@ -8,6 +9,7 @@ from rl_modules.replay_buffer import replay_buffer
 from rl_modules.models import actor, critic
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
+import wandb
 
 """
 ddpg with HER (MPI-version)
@@ -69,6 +71,8 @@ class ddpg_agent:
             self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp)
             if not os.path.exists(self.model_path):
                 os.mkdir(self.model_path)
+            # start wandb to log
+            wandb.init(project=self.args.env_name+self.args.exp)
 
     def learn(self):
         """
@@ -77,6 +81,8 @@ class ddpg_agent:
         """
         # start to collect samples
         curriculum_param = 0
+        start_time = time()
+        collect_per_epoch = self.args.n_cycles * self.args.num_rollouts_per_mpi * self.env_params['max_timesteps']
         for epoch in range(self.args.n_epochs):
             for _ in range(self.args.n_cycles):
                 mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
@@ -126,18 +132,29 @@ class ddpg_agent:
                 # soft update
                 self._soft_update_target_network(self.actor_target_network, self.actor_network)
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
-            # start to do the evaluation
-            data = self._eval_agent()
-            if MPI.COMM_WORLD.Get_rank() == 0:
-                print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
-                torch.save([self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std, self.actor_network.state_dict(), self.critic_network.state_dict()], \
-                            self.model_path + '/model.pt')
             if self.args.curriculum and data['success_rate'] > 0.5:
                 if curriculum_param < 1: 
                     curriculum_param += 0.1
                 self.env.change(curriculum_param)
                 if MPI.COMM_WORLD.Get_rank() == 0:
                     print(f"same_side_rate: {curriculum_param-0.1} -> {curriculum_param}")
+            # start to do the evaluation
+            data = self._eval_agent()
+            if MPI.COMM_WORLD.Get_rank() == 0:
+                # save data
+                print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
+                torch.save([self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std, self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                            self.model_path + '/model.pt')
+                # log data
+                wandb.log(
+                    {
+                        'success rate': data['success_rate'], 
+                        "reward": data['reward'], 
+                        "curriculum param": curriculum_param, 
+                        "run time": (time()-start_time)/3600, 
+                    }, 
+                    step=epoch*collect_per_epoch
+                )
 
     # pre_process the inputs
     def _preproc_inputs(self, obs, g):
