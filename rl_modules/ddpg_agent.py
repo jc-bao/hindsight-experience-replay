@@ -275,6 +275,9 @@ class ddpg_agent:
     def _eval_agent(self):
         total_success_rate = []
         total_reward = []
+        # record video
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            video = []
         for _ in range(self.args.n_test_rollouts):
             per_success_rate = []
             per_reward = []
@@ -292,8 +295,12 @@ class ddpg_agent:
                 g = observation_new['desired_goal']
                 per_success_rate.append(info['is_success'])
                 per_reward.append(reward)
+                if MPI.COMM_WORLD.Get_rank() == 0:
+                    video.append(self.env.render(mode = 'rgb_array'))
             total_success_rate.append(per_success_rate)
             total_reward.append(per_reward)
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            wandb.log({"video": wandb.Video(video, fps=30, format="mp4")})
         total_success_rate = np.array(total_success_rate)
         total_reward = np.array(total_reward)
         local_success_rate = np.mean(total_success_rate[:, -1])
