@@ -114,3 +114,4 @@ saved_model/
 
 *.log
 
+wandb/
