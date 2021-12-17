@@ -3,7 +3,7 @@ from rl_modules.models import actor
 from arguments import get_args
 import gym
 import numpy as np
-import gym_naive, gym_xarm
+import gym_naive, gym_xarm, panda_gym
 import time
 
 # process the inputs
@@ -20,19 +20,18 @@ if __name__ == '__main__':
     args = get_args()
     # load the model param
     # model_path = args.save_dir + args.env_name + '/model.pt'
-    model_path = '/rl/hindsight-experience-replay/rearrange_2/XarmHandover-v0/model.pt'
+    model_path = '/Users/reedpan/Downloads/model.pt'
     o_mean, o_std, g_mean, g_std, model, _ = torch.load(model_path, map_location=lambda storage, loc: storage)
     # create the environment
-    config = {
-        'goal_shape': 'ground', 
-        'num_obj': 2,
-        'GUI': False, 
-        'same_side_rate': 0.0,
-        'use_stand': False,
-        'lego_length': 0.15
-    }
-    env = gym.make(args.env_name, 
-        config = config
+    # config = {
+    #     'goal_shape': 'ground', 
+    #     'num_obj': 2,
+    #     'GUI': False, 
+    #     'same_side_rate': 0.0,
+    #     'use_stand': False,
+    #     'lego_length': 0.15
+    # }
+    env = gym.make(args.env_name, render = True
     )
     # get the env param
     observation = env.reset()
