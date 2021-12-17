@@ -24,7 +24,10 @@ class ddpg_agent:
         # load paramters
         if args.resume:
             path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp, 'model.pt')
-            o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+            try:
+                o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+            except:
+                print('fail to load the model!')
             print('loaded done!')
             self.actor_network.load_state_dict(actor_model)
             self.critic_network.load_state_dict(critic_model)

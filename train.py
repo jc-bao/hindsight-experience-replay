@@ -25,24 +25,7 @@ def get_env_params(env):
 
 def launch(args):
     # create the ddpg_agent
-    # config = {
-    #     'goal_shape': 'ground', 
-    #     'num_obj': 2,
-    #     'GUI': False, 
-    #     'same_side_rate': 0.5,
-    #     'use_stand': False,
-    #     'lego_length': 0.15,
-    #     # 'n': 12
-    # }
-    env = gym.make(args.env_name, 
-    )
-    # config = {
-    #     'env': 'PandaPickAndPlace2-v2',
-    # }
-    # env = gym.make(config['env']
-        # config = config
-    # )
-    # env = gym.make('FetchReach-v1')
+    env = gym.make(args.env_name)
     # set random seeds for reproduce
     env.seed(args.seed + MPI.COMM_WORLD.Get_rank())
     random.seed(args.seed + MPI.COMM_WORLD.Get_rank())
