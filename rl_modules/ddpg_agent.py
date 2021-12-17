@@ -132,14 +132,14 @@ class ddpg_agent:
                 # soft update
                 self._soft_update_target_network(self.actor_target_network, self.actor_network)
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
+            # start to do the evaluation
+            data = self._eval_agent()
             if self.args.curriculum and data['success_rate'] > 0.5:
                 if curriculum_param < 1: 
                     curriculum_param += 0.1
                 self.env.change(curriculum_param)
                 if MPI.COMM_WORLD.Get_rank() == 0:
                     print(f"same_side_rate: {curriculum_param-0.1} -> {curriculum_param}")
-            # start to do the evaluation
-            data = self._eval_agent()
             if MPI.COMM_WORLD.Get_rank() == 0:
                 # save data
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
