@@ -134,7 +134,7 @@ class ddpg_agent:
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
             # start to do the evaluation
             data = self._eval_agent()
-            if self.args.curriculum and data['success_rate'] > 0.5:
+            if self.args.curriculum and data['success_rate'] > self.args.curriculum_bar:
                 if curriculum_param < 1: 
                     curriculum_param += 0.1
                 self.env.change(curriculum_param)
