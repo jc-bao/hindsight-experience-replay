@@ -1,0 +1,32 @@
+{
+    "os": "Linux-5.4.0-80-generic-x86_64-with-Ubuntu-18.04-bionic",
+    "python": "3.6.9",
+    "heartbeatAt": "2021-12-17T00:58:21.572968",
+    "startedAt": "2021-12-17T00:58:18.829596",
+    "docker": null,
+    "gpu": "GeForce RTX 3090",
+    "gpu_count": 1,
+    "cpu_count": 256,
+    "cuda": null,
+    "args": [
+        "--n-epochs",
+        "100",
+        "--exp",
+        "bi_lift_curri",
+        "--env-name",
+        "PandaLiftBimanual-v0",
+        "--curriculum"
+    ],
+    "state": "running",
+    "program": "train.py",
+    "codePath": "train.py",
+    "git": {
+        "remote": "git@github.com:jc-bao/hindsight-experience-replay.git",
+        "commit": "bcd81fe4bdbabc0120810372347bfcd5185364c9"
+    },
+    "email": "jc-bao@outlook.com",
+    "root": "/rl/hindsight-experience-replay",
+    "host": "816edb892beb",
+    "username": "root",
+    "executable": "/usr/bin/python"
+}
