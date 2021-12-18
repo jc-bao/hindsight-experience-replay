@@ -303,7 +303,7 @@ class ddpg_agent:
             total_success_rate.append(per_success_rate)
             total_reward.append(per_reward)
         if MPI.COMM_WORLD.Get_rank() == 0:
-            wandb.log({"video": wandb.Video(video, fps=30, format="mp4")})
+            wandb.log({"video": wandb.Video(np.array(video), fps=30, format="mp4")})
         total_success_rate = np.array(total_success_rate)
         total_reward = np.array(total_reward)
         local_success_rate = np.mean(total_success_rate[:, -1])
