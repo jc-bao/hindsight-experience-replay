@@ -6,7 +6,7 @@ import numpy as np
 from mpi4py import MPI
 from mpi_utils.mpi_utils import sync_networks, sync_grads
 from rl_modules.replay_buffer import replay_buffer
-from rl_modules.models import actor, critic
+from rl_modules.models import actor, critic, critic_bilinear
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
 import wandb
@@ -22,7 +22,10 @@ class ddpg_agent:
         self.env_params = env_params
         # create the network
         self.actor_network = actor(env_params)
-        self.critic_network = critic(env_params)
+        if args.use_bilinear:
+            self.critic_network = critic_bilinear(env_params)
+        else:
+            self.critic_network = critic(env_params)
         # load paramters
         if args.resume:
             path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp, 'model.pt')

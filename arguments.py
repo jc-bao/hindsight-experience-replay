@@ -38,6 +38,7 @@ def get_args():
     parser.add_argument('--resume', action='store_true', help='if resume old model')
     parser.add_argument('--exp', type=str, default='debug', help='the path to save the models')
     parser.add_argument('--curriculum-bar', default=0.5)
+    parser.add_argument('--use-bilinear', action='store_true')
 
     args = parser.parse_args()
 
