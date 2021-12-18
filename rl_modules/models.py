@@ -59,7 +59,7 @@ class critic_bilinear(nn.Module):
 
     def forward(self, x, actions):
         # f(s, a)
-        x1 = torch.cat([x[:self.env_params['obs']], actions / self.max_action], dim=1)
+        x1 = torch.cat([x[...,:self.env_params['obs']], actions / self.max_action], dim=1)
         x1 = F.relu(self.fc1_1(x1))
         x1 = F.relu(self.fc1_2(x1))
         x1 = F.relu(self.fc1_3(x1))
@@ -68,6 +68,6 @@ class critic_bilinear(nn.Module):
         x2 = F.relu(self.fc2_2(x2))
         x2 = F.relu(self.fc2_3(x2))
         #dot product
-        q_value = torch.dot(x1, x2)
+        q_value = torch.einsum('bs,bs->b', x1, x2)
 
         return q_value
