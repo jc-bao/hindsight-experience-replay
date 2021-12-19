@@ -6,7 +6,7 @@ import numpy as np
 from mpi4py import MPI
 from mpi_utils.mpi_utils import sync_networks, sync_grads
 from rl_modules.replay_buffer import replay_buffer
-from rl_modules.models import actor, critic
+from rl_modules.models import actor, critic, critic_bilinear
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
 import wandb
@@ -20,9 +20,15 @@ class ddpg_agent:
         self.args = args
         self.env = env
         self.env_params = env_params
-        # create the network
+        # create the network and target network
         self.actor_network = actor(env_params)
-        self.critic_network = critic(env_params)
+        self.actor_target_network = actor(env_params)
+        if args.use_bilinear:
+            self.critic_network = critic_bilinear(env_params)
+            self.critic_target_network = critic_bilinear(env_params)
+        else:
+            self.critic_network = critic(env_params)
+            self.critic_target_network = critic(env_params)
         # load paramters
         if args.resume:
             path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp, 'model.pt')
@@ -36,9 +42,6 @@ class ddpg_agent:
         # sync the networks across the cpus
         sync_networks(self.actor_network)
         sync_networks(self.critic_network)
-        # build up the target network
-        self.actor_target_network = actor(env_params)
-        self.critic_target_network = critic(env_params)
         # load the weights into the target networks
         self.actor_target_network.load_state_dict(self.actor_network.state_dict())
         self.critic_target_network.load_state_dict(self.critic_network.state_dict())
@@ -65,12 +68,12 @@ class ddpg_agent:
             self.g_norm.mean = g_mean
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
-            if not os.path.exists(self.args.save_dir):
-                os.mkdir(self.args.save_dir)
+            # if not os.path.exists(self.args.save_dir):
+            #     os.mkdir(self.args.save_dir, exist_ok=True)
             # path to save the model
             self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp)
             if not os.path.exists(self.model_path):
-                os.mkdir(self.model_path)
+                os.makedirs(self.model_path)
             # start wandb to log
             wandb.init(project=self.args.env_name+self.args.exp)
 
