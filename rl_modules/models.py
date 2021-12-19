@@ -49,13 +49,15 @@ class critic_bilinear(nn.Module):
         super(critic_bilinear, self).__init__()
         self.max_action = env_params['action_max']
         # f(s, a)
-        self.fc1_1 = nn.Linear(env_params['obs'] + env_params['action'], 128)
-        self.fc1_2 = nn.Linear(128, 128)
-        self.fc1_3 = nn.Linear(128, 128)
+        self.fc1_1 = nn.Linear(env_params['obs'] + env_params['action'], 176)
+        self.fc1_2 = nn.Linear(176, 176)
+        self.fc1_3 = nn.Linear(176, 176)
+        self.fc1_4 = nn.Linear(176, 16)
         # phi(s, g)
-        self.fc2_1 = nn.Linear(env_params['obs'] + env_params['goal'], 128)
-        self.fc2_2 = nn.Linear(128, 128)
-        self.fc2_3 = nn.Linear(128, 128)
+        self.fc2_1 = nn.Linear(env_params['obs'] + env_params['goal'], 176)
+        self.fc2_2 = nn.Linear(176, 176)
+        self.fc2_3 = nn.Linear(176, 176)
+        self.fc2_4 = nn.Linear(176, 16)
 
     def forward(self, x, actions):
         # f(s, a)
@@ -63,10 +65,12 @@ class critic_bilinear(nn.Module):
         x1 = F.relu(self.fc1_1(x1))
         x1 = F.relu(self.fc1_2(x1))
         x1 = F.relu(self.fc1_3(x1))
+        x1 = F.relu(self.fc1_4(x1))
         # phi(s, g)
         x2 = F.relu(self.fc2_1(x))
         x2 = F.relu(self.fc2_2(x2))
         x2 = F.relu(self.fc2_3(x2))
+        x2 = F.relu(self.fc2_4(x2))
         #dot product
         q_value = torch.einsum('bs,bs->b', x1, x2)
 
