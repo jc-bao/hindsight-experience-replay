@@ -299,7 +299,9 @@ class ddpg_agent:
                 per_success_rate.append(info['is_success'])
                 per_reward.append(reward)
                 if MPI.COMM_WORLD.Get_rank() == 0:
-                    video.append(self.env.render(mode = 'rgb_array'))
+                    frame = np.array(self.env.render(mode = 'rgb_array'))
+                    frame = np.moveaxis(frame, -1, 0)
+                    video.append(frame)
             total_success_rate.append(per_success_rate)
             total_reward.append(per_reward)
         if MPI.COMM_WORLD.Get_rank() == 0:
