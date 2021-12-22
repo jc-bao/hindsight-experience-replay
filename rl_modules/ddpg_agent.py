@@ -87,6 +87,7 @@ class ddpg_agent:
         start_time = time()
         collect_per_epoch = self.args.n_cycles * self.args.num_rollouts_per_mpi * self.env_params['max_timesteps']
         for epoch in range(self.args.n_epochs):
+            num_useless_rollout = 0 # record number of useless rollout(ag not change)
             for _ in range(self.args.n_cycles):
                 mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
                 for _ in range(self.args.num_rollouts_per_mpi):
@@ -98,7 +99,8 @@ class ddpg_agent:
                     ag = observation['achieved_goal']
                     g = observation['desired_goal']
                     # start to collect samples
-                    for t in range(self.env_params['max_timesteps']):
+                    ag_origin = ag
+                    for t in range(self.env_params['max_timesteps']*5): # max trail time:5
                         with torch.no_grad():
                             input_tensor = self._preproc_inputs(obs, g)
                             pi = self.actor_network(input_tensor)
@@ -115,6 +117,23 @@ class ddpg_agent:
                         # re-assign the observation
                         obs = obs_new
                         ag = ag_new
+                        # check if use this rollout
+                        if (t+1) % self.env_params['max_timesteps'] == 0:
+                            if self.args.only_collect_change and np.all(abs(ag - ag_origin)<0.001):
+                                num_useless_rollout += 1
+                                if (t+1) == self.env_params['max_timesteps']*5:
+                                    break # make sure has experience to use at last
+                                # reset the rollouts
+                                ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+                                # reset the environment
+                                observation = self.env.reset()
+                                obs = observation['observation']
+                                ag = observation['achieved_goal']
+                                g = observation['desired_goal']
+                                # start to collect samples
+                                ag_origin = ag
+                            else:
+                                break
                     ep_obs.append(obs.copy())
                     ep_ag.append(ag.copy())
                     mb_obs.append(ep_obs)
@@ -155,6 +174,7 @@ class ddpg_agent:
                         "reward": data['reward'], 
                         "curriculum param": curriculum_param, 
                         "run time": (time()-start_time)/3600, 
+                        "useless rollouts": num_useless_rollout, 
                     }, 
                     step=epoch*collect_per_epoch
                 )
