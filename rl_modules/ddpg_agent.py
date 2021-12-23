@@ -91,49 +91,39 @@ class ddpg_agent:
             for _ in range(self.args.n_cycles):
                 mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
                 for _ in range(self.args.num_rollouts_per_mpi):
-                    # reset the rollouts
-                    ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
-                    # reset the environment
-                    observation = self.env.reset()
-                    obs = observation['observation']
-                    ag = observation['achieved_goal']
-                    g = observation['desired_goal']
-                    # start to collect samples
-                    ag_origin = ag
-                    for t in range(self.env_params['max_timesteps']*5): # max trail time:5
-                        with torch.no_grad():
-                            input_tensor = self._preproc_inputs(obs, g)
-                            pi = self.actor_network(input_tensor)
-                            action = self._select_actions(pi)
-                        # feed the actions into the environment
-                        observation_new, _, _, info = self.env.step(action)
-                        obs_new = observation_new['observation']
-                        ag_new = observation_new['achieved_goal']
-                        # append rollouts
-                        ep_obs.append(obs.copy())
-                        ep_ag.append(ag.copy())
-                        ep_g.append(g.copy())
-                        ep_actions.append(action.copy())
-                        # re-assign the observation
-                        obs = obs_new
-                        ag = ag_new
+                    # try until collect successful experience
+                    for j in range(self.args.max_trail_time):
+                        # reset the rollouts
+                        ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+                        # reset the environment
+                        observation = self.env.reset()
+                        obs = observation['observation']
+                        ag = observation['achieved_goal']
+                        g = observation['desired_goal']
+                        # start to collect samples
+                        ag_origin = ag
+                        for t in range(self.env_params['max_timesteps']):
+                            with torch.no_grad():
+                                input_tensor = self._preproc_inputs(obs, g)
+                                pi = self.actor_network(input_tensor)
+                                action = self._select_actions(pi)
+                            # feed the actions into the environment
+                            observation_new, _, _, info = self.env.step(action)
+                            obs_new = observation_new['observation']
+                            ag_new = observation_new['achieved_goal']
+                            # append rollouts
+                            ep_obs.append(obs.copy())
+                            ep_ag.append(ag.copy())
+                            ep_g.append(g.copy())
+                            ep_actions.append(action.copy())
+                            # re-assign the observation
+                            obs = obs_new
+                            ag = ag_new
                         # check if use this rollout
-                        if (t+1) % self.env_params['max_timesteps'] == 0:
-                            if self.args.only_collect_change and np.all(abs(ag - ag_origin)<0.001):
-                                num_useless_rollout += 1
-                                if (t+1) == self.env_params['max_timesteps']*5:
-                                    break # make sure has experience to use at last
-                                # reset the rollouts
-                                ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
-                                # reset the environment
-                                observation = self.env.reset()
-                                obs = observation['observation']
-                                ag = observation['achieved_goal']
-                                g = observation['desired_goal']
-                                # start to collect samples
-                                ag_origin = ag
-                            else:
-                                break
+                        if np.all(abs(ag - ag_origin)>0.0005):
+                            break
+                        else:
+                            num_useless_rollout += 1
                     ep_obs.append(obs.copy())
                     ep_ag.append(ag.copy())
                     mb_obs.append(ep_obs)
@@ -174,7 +164,7 @@ class ddpg_agent:
                         "reward": data['reward'], 
                         "curriculum param": curriculum_param, 
                         "run time": (time()-start_time)/3600, 
-                        "useless rollouts": num_useless_rollout, 
+                        "useless rollouts per cycle": num_useless_rollout/self.args.n_cycles, 
                     }, 
                     step=epoch*collect_per_epoch
                 )
@@ -301,7 +291,7 @@ class ddpg_agent:
         # record video
         if MPI.COMM_WORLD.Get_rank() == 0:
             video = []
-        for _ in range(self.args.n_test_rollouts):
+        for n in range(self.args.n_test_rollouts):
             per_success_rate = []
             per_reward = []
             observation = self.env.reset()
@@ -318,7 +308,7 @@ class ddpg_agent:
                 g = observation_new['desired_goal']
                 per_success_rate.append(info['is_success'])
                 per_reward.append(reward)
-                if MPI.COMM_WORLD.Get_rank() == 0:
+                if MPI.COMM_WORLD.Get_rank() == 0 and n > self.args.n_test_rollouts-4:
                     frame = np.array(self.env.render(mode = 'rgb_array'))
                     frame = np.moveaxis(frame, -1, 0)
                     video.append(frame)
