@@ -109,6 +109,8 @@ class ddpg_agent:
                                 action = self._select_actions(pi)
                             # feed the actions into the environment
                             observation_new, _, _, info = self.env.step(action)
+                            if self.args.render:
+                                self.env.render(mode = 'human')
                             obs_new = observation_new['observation']
                             ag_new = observation_new['achieved_goal']
                             # append rollouts
@@ -120,7 +122,7 @@ class ddpg_agent:
                             obs = obs_new
                             ag = ag_new
                         # check if use this rollout
-                        if np.sum(abs(ag - ag_origin))>0.001:
+                        if np.sum(abs(ag - ag_origin))>0.01:
                             break
                         else:
                             num_useless_rollout += 1

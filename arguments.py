@@ -40,6 +40,7 @@ def get_args():
     parser.add_argument('--curriculum-bar', default=0.5, type = float)
     parser.add_argument('--use-bilinear', action='store_true')
     parser.add_argument('--max-trail-time', type=int, default=1, help='max trail time to collect a successful experence')
+    parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
     return args
