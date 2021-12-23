@@ -120,7 +120,7 @@ class ddpg_agent:
                             obs = obs_new
                             ag = ag_new
                         # check if use this rollout
-                        if np.all(abs(ag - ag_origin)>0.0005):
+                        if np.sum(abs(ag - ag_origin)>0.001):
                             break
                         else:
                             num_useless_rollout += 1
