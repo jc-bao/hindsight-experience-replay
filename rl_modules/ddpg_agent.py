@@ -140,7 +140,11 @@ class ddpg_agent:
                 # store the episodes
                 self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
                 self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
-                for _ in range(self.args.n_batches):
+                if self.args.dynamic_batch: # update according to buffer size
+                    update_times = self.args.n_batches * self.buffer.current_size / self.buffer.size
+                else:
+                    update_times = self.args.n_batches
+                for _ in range(update_times):
                     # train the network
                     self._update_network()
                 # soft update
