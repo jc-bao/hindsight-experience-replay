@@ -84,7 +84,7 @@ class ddpg_agent:
                     group = self.args.group,
                     tags = self.args.tags, 
                     name = self.args.name,
-                    note = f'Env:{self.args.env_name},Note:{self.args.note}'
+                    notes = f'Env:{self.args.env_name},Note:{self.args.note}'
                 )
 
     def learn(self):
