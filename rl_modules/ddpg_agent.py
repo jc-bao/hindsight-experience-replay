@@ -31,7 +31,10 @@ class ddpg_agent:
             self.critic_target_network = critic(env_params)
         # load paramters
         if args.resume:
-            path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp, 'model.pt')
+            if self.args.model_path == None:
+                path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp, 'model.pt')
+            else:
+                path = self.args.model_path
             try:
                 o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             except:
@@ -55,7 +58,7 @@ class ddpg_agent:
         self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=self.args.lr_actor)
         self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=self.args.lr_critic)
         # her sampler
-        self.her_module = her_sampler(self.args.replay_strategy, self.args.replay_k, self.env.compute_reward)
+        self.her_module = her_sampler(self.args.replay_strategy, self.args.replay_k, self.env.compute_reward, random_unmoved = self.args.random_unmoved, not_relabel_unmoved = self.args.not_relabel_unmoved)
         # create the replay buffer
         self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
         # create the normalizer
@@ -141,7 +144,7 @@ class ddpg_agent:
                 self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
                 self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
                 if self.args.dynamic_batch: # update according to buffer size
-                    update_times = self.args.n_batches * self.buffer.current_size / self.buffer.size
+                    update_times = int(self.args.n_batches * self.buffer.current_size / self.buffer.size)
                 else:
                     update_times = self.args.n_batches
                 for _ in range(update_times):
@@ -314,13 +317,13 @@ class ddpg_agent:
                 g = observation_new['desired_goal']
                 per_success_rate.append(info['is_success'])
                 per_reward.append(reward)
-                if MPI.COMM_WORLD.Get_rank() == 0 and n > self.args.n_test_rollouts-4:
+                if MPI.COMM_WORLD.Get_rank() == 0 and n > self.args.n_test_rollouts-4 and self.args.render:
                     frame = np.array(self.env.render(mode = 'rgb_array'))
                     frame = np.moveaxis(frame, -1, 0)
                     video.append(frame)
             total_success_rate.append(per_success_rate)
             total_reward.append(per_reward)
-        if MPI.COMM_WORLD.Get_rank() == 0:
+        if MPI.COMM_WORLD.Get_rank() == 0 and self.args.render:
             wandb.log({"video": wandb.Video(np.array(video), fps=30, format="mp4")})
         total_success_rate = np.array(total_success_rate)
         total_reward = np.array(total_reward)

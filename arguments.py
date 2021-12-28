@@ -42,6 +42,9 @@ def get_args():
     parser.add_argument('--max-trail-time', type=int, default=1, help='max trail time to collect a successful experence')
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--dynamic-batch', action='store_true')
+    parser.add_argument('--random-unmoved', action='store_true')
+    parser.add_argument('--not-relabel-unmoved', action='store_true')
+    parser.add_argument('--model-path', default=None, type=str)
     args = parser.parse_args()
 
     return args

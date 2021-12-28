@@ -25,7 +25,15 @@ def get_env_params(env):
 
 def launch(args):
     # create the ddpg_agent
-    env = gym.make(args.env_name, render = args.render)
+    config = {
+        'GUI': False,
+        'num_obj': 2, 
+        'same_side_rate': 0.5, 
+        'goal_shape': 'any', 
+        'use_stand': False, 
+    }
+    env = gym.make('XarmHandover-v0', config = config)
+    # env = gym.make(args.env_name, render = args.render)
     # set random seeds for reproduce
     env.seed(args.seed + MPI.COMM_WORLD.Get_rank())
     random.seed(args.seed + MPI.COMM_WORLD.Get_rank())
