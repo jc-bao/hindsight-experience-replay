@@ -33,7 +33,7 @@ def launch(args):
     #     'use_stand': False, 
     # }
     # env = gym.make('XarmHandover-v0', config = config)
-    env = gym.make(args.env_name, render = args.render)
+    env = gym.make(args.env_name)
     # set random seeds for reproduce
     env.seed(args.seed + MPI.COMM_WORLD.Get_rank())
     random.seed(args.seed + MPI.COMM_WORLD.Get_rank())
