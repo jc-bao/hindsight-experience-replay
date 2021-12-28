@@ -78,7 +78,14 @@ class ddpg_agent:
             if not os.path.exists(self.model_path):
                 os.makedirs(self.model_path)
             # start wandb to log
-            wandb.init(project=self.args.env_name+self.args.exp)
+            if self.args.wandb:
+                wandb.init(
+                    project = self.args.project,
+                    group = self.args.group,
+                    tags = self.args.tags, 
+                    name = self.args.name,
+                    note = f'Env:{self.args.env_name},Note:{self.args.note}'
+                )
 
     def learn(self):
         """
@@ -161,7 +168,7 @@ class ddpg_agent:
                 self.env.change(curriculum_param)
                 if MPI.COMM_WORLD.Get_rank() == 0:
                     print(f"same_side_rate: {curriculum_param-0.1} -> {curriculum_param}")
-            if MPI.COMM_WORLD.Get_rank() == 0:
+            if MPI.COMM_WORLD.Get_rank() == 0 and self.args.wandb:
                 # save data
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
                 torch.save([self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std, self.actor_network.state_dict(), self.critic_network.state_dict()], \
@@ -323,7 +330,7 @@ class ddpg_agent:
                     video.append(frame)
             total_success_rate.append(per_success_rate)
             total_reward.append(per_reward)
-        if MPI.COMM_WORLD.Get_rank() == 0 and self.args.render:
+        if MPI.COMM_WORLD.Get_rank() == 0 and self.args.render and self.args.wandb:
             wandb.log({"video": wandb.Video(np.array(video), fps=30, format="mp4")})
         total_success_rate = np.array(total_success_rate)
         total_reward = np.array(total_reward)

@@ -36,7 +36,6 @@ def get_args():
     parser.add_argument('--num-rollouts-per-mpi', type=int, default=2, help='the rollouts per mpi')
     parser.add_argument('--curriculum', action='store_true', help='if use curriculum to train')
     parser.add_argument('--resume', action='store_true', help='if resume old model')
-    parser.add_argument('--exp', type=str, default='debug', help='the path to save the models')
     parser.add_argument('--curriculum-bar', default=0.5, type = float)
     parser.add_argument('--use-bilinear', action='store_true')
     parser.add_argument('--max-trail-time', type=int, default=1, help='max trail time to collect a successful experence')
@@ -45,6 +44,14 @@ def get_args():
     parser.add_argument('--random-unmoved', action='store_true')
     parser.add_argument('--not-relabel-unmoved', action='store_true')
     parser.add_argument('--model-path', default=None, type=str)
+    # wandb mode
+    parser.add_argument('--wandb', action='store_true')
+    parser.add_argument('--project', type = str, default = 'debug')
+    parser.add_argument('--group', type = str, default = 'ungrouped')
+    parser.add_argument('--tags', type = str, default = 'notag')
+    parser.add_argument('--name', type = str, default = 'noname')
+    parser.add_argument('--note', type = str, default = '')
+
     args = parser.parse_args()
 
     return args
