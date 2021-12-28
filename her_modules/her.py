@@ -34,11 +34,11 @@ class her_sampler:
             num_obj = int(goal_dim/3)
             old_ag = transitions['ag'][her_indexes]
             old_goal = transitions['g'][her_indexes]
-            if_moved = abs(future_ag - old_ag)>0.001
+            if_moved = abs(future_ag - old_ag)>0.00001
             if_moved = if_moved.reshape(sample_size, num_obj, 3)
-            musk = np.all(if_moved, axis=-1).reshape(sample_size, num_obj,-1)
+            musk = np.any(if_moved, axis=-1).reshape(sample_size, num_obj,-1)
             self.replace_rate.append(np.sum(musk)/(sample_size*num_obj))
-            if len(self.replace_rate) == 1000:
+            if len(self.replace_rate) == 10:
                 # wandb.log({'her relabel ignore rate': mean(self.replace_rate)})
                 print(mean(self.replace_rate))
                 self.replace_rate = []
