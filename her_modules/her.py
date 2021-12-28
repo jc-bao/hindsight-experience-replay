@@ -32,8 +32,9 @@ class her_sampler:
         if self.not_relabel_unmoved:
             sample_size, goal_dim = future_ag.shape
             num_obj = int(goal_dim/3)
+            old_ag = transitions['ag'][her_indexes]
             old_goal = transitions['g'][her_indexes]
-            if_moved = abs(future_ag - old_goal)>0.01
+            if_moved = abs(future_ag - old_ag)>0.001
             if_moved = if_moved.reshape(sample_size, num_obj, 3)
             musk = np.all(if_moved, axis=-1).reshape(sample_size, num_obj,-1)
             self.replace_rate.append(np.sum(musk)/(sample_size*num_obj))
