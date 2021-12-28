@@ -38,7 +38,7 @@ class her_sampler:
             if_moved = if_moved.reshape(sample_size, num_obj, 3)
             musk = np.any(if_moved, axis=-1).reshape(sample_size, num_obj,-1)
             self.replace_rate.append(np.sum(musk)/(sample_size*num_obj))
-            if len(self.replace_rate) == 10:
+            if len(self.replace_rate) == 10000:
                 # wandb.log({'her relabel ignore rate': mean(self.replace_rate)})
                 print(mean(self.replace_rate))
                 self.replace_rate = []
