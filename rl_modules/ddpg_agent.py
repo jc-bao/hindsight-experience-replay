@@ -74,7 +74,7 @@ class ddpg_agent:
             # if not os.path.exists(self.args.save_dir):
             #     os.mkdir(self.args.save_dir, exist_ok=True)
             # path to save the model
-            self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp)
+            self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name)
             if not os.path.exists(self.model_path):
                 os.makedirs(self.model_path)
             # start wandb to log
