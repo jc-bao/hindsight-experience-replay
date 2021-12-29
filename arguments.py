@@ -37,6 +37,7 @@ def get_args():
     parser.add_argument('--curriculum', action='store_true', help='if use curriculum to train')
     parser.add_argument('--resume', action='store_true', help='if resume old model')
     parser.add_argument('--curriculum-bar', default=0.5, type = float)
+    parser.add_argument('--curriculum-init', default=0, type = float)
     parser.add_argument('--use-bilinear', action='store_true')
     parser.add_argument('--use-critic-sum', action='store_true')
     parser.add_argument('--max-trail-time', type=int, default=1, help='max trail time to collect a successful experence')

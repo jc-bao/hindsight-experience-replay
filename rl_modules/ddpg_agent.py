@@ -96,7 +96,7 @@ class ddpg_agent:
 
         """
         # start to collect samples
-        curriculum_param = 0
+        curriculum_param = self.args.curriculum_init
         start_time = time()
         collect_per_epoch = self.args.n_cycles * self.args.num_rollouts_per_mpi * self.env_params['max_timesteps']
         for epoch in range(self.args.n_epochs):
