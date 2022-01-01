@@ -85,7 +85,7 @@ class critic_sum(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 256)
         self.q_out = nn.Linear(256, 1)
-        self.num_goal = self.num_obj
+        self.num_goal = 1
 
     def forward(self, x, actions):
         goal = x[-self.num_obj*3:]

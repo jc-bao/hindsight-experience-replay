@@ -167,6 +167,10 @@ class ddpg_agent:
                 if curriculum_param < 1: 
                     curriculum_param += 0.1
                 self.env.change(curriculum_param)
+                if self.args.use_critic_sum:
+                    if self.critic_network.num_goal < self.critic_network.num_obj:
+                        self.critic_network.num_goal += 1
+                        self.critic_target_network.num_goal += 1
                 if MPI.COMM_WORLD.Get_rank() == 0:
                     print(f"same_side_rate: {curriculum_param-0.1} -> {curriculum_param}")
             if MPI.COMM_WORLD.Get_rank() == 0 and self.args.wandb:
