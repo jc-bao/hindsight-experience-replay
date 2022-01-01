@@ -95,6 +95,9 @@ class ddpg_agent:
         train the network
 
         """
+        # warm up
+        if self.args.warmup:
+            self.warmup(100)
         # start to collect samples
         curriculum_param = self.args.curriculum_init
         start_time = time()
@@ -347,3 +350,41 @@ class ddpg_agent:
             'success_rate': global_success_rate / MPI.COMM_WORLD.Get_size(),
             'reward': global_reward / MPI.COMM_WORLD.Get_size(),
         }
+    
+    def warmup(self, num_rollout):
+        mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
+        for _ in range(num_rollout):
+            ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+            # reset the environment
+            observation = self.env.reset()
+            obs = observation['observation']
+            ag = observation['achieved_goal']
+            g = observation['desired_goal']
+            for t in range(self.env_params['max_timesteps']):
+                action = self.env.action_space.sample()
+                # feed the actions into the environment
+                observation_new, _, _, info = self.env.step(action)
+                obs_new = observation_new['observation']
+                ag_new = observation_new['achieved_goal']
+                # append rollouts
+                ep_obs.append(obs.copy())
+                ep_ag.append(ag.copy())
+                ep_g.append(g.copy())
+                ep_actions.append(action.copy())
+                # re-assign the observation
+                obs = obs_new
+                ag = ag_new
+            ep_obs.append(obs.copy())
+            ep_ag.append(ag.copy())
+            mb_obs.append(ep_obs)
+            mb_ag.append(ep_ag)
+            mb_g.append(ep_g)
+            mb_actions.append(ep_actions)
+        # convert them into arrays
+        mb_obs = np.array(mb_obs)
+        mb_ag = np.array(mb_ag)
+        mb_g = np.array(mb_g)
+        mb_actions = np.array(mb_actions)
+        # store the episodes
+        self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
+        self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])

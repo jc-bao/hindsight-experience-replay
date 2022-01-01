@@ -46,6 +46,7 @@ def get_args():
     parser.add_argument('--random-unmoved', action='store_true')
     parser.add_argument('--not-relabel-unmoved', action='store_true')
     parser.add_argument('--model-path', default=None, type=str)
+    parser.add_argument('--warmup', action='store_true')
     # wandb mode
     parser.add_argument('--wandb', action='store_true')
     parser.add_argument('--project', type = str, default = 'debug')
