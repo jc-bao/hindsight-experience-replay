@@ -72,7 +72,7 @@ class critic_bilinear(nn.Module):
         x2 = F.relu(self.fc2_3(x2))
         x2 = self.fc2_4(x2)
         #dot product
-        q_value = torch.einsum('bs,bs->b', x1, x2)
+        q_value = torch.einsum('bs,bs->b', x1, x2).reshape(-1, 1)
 
         return q_value
 
