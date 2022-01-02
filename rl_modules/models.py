@@ -91,7 +91,7 @@ class critic_sum(nn.Module):
         goal = x[..., -self.num_obj*3:]
         obs = x[..., :-self.num_obj*3]
         q_value = torch.zeros(x.size(dim=0), 1, dtype=torch.float32)
-        for i in range(self.num_obj):
+        for i in range(self.num_goal):
             x = torch.cat([obs, goal[...,i*3:i*3+3], actions / self.max_action], dim=1)
             x = F.relu(self.fc1(x))
             x = F.relu(self.fc2(x))
