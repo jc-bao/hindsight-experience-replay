@@ -58,11 +58,13 @@ class her_sampler:
             relabel_musk = np.repeat(relabel_musk, 3, axis=-1).reshape(sample_size, -1)
             random_musk = np.repeat(random_musk, 3, axis=-1).reshape(sample_size, -1)
             nochange_musk = np.repeat(nochange_musk, 3, axis=-1).reshape(sample_size, -1)
-            if True:
+            if self.random_unmoved:
                 random_goal = np.random.uniform([-0.4, -0.15, 0.02], [0.4, 0.15, 0.2], size=(sample_size, num_obj, 3)).reshape(sample_size, -1)
                 new_goal = future_ag*relabel_musk + old_goal*nochange_musk + random_goal*random_musk
             else:
                 new_goal = future_ag*relabel_musk + old_goal*np.logical_or(nochange_musk, random_musk) 
+        else:
+            new_goal = future_ag
         # CHANGE1: only change goal when ag is not same with ag
         # if self.not_relabel_unmoved:
         #     for i in range(len(future_ag)):
