@@ -165,7 +165,7 @@ class ddpg_agent:
                 self._soft_update_target_network(self.actor_target_network, self.actor_network)
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
             # start to do the evaluation
-            data = self._eval_agent()
+            data = self._eval_agent(render = ((epoch%10)==0  and self.args.render))
             if self.args.curriculum_reward:
                 curri_param = data['reward']
             else:
@@ -313,7 +313,7 @@ class ddpg_agent:
         self.critic_optim.step()
 
     # do the evaluation
-    def _eval_agent(self):
+    def _eval_agent(self, render = False):
         total_success_rate = []
         total_reward = []
         # record video
@@ -336,7 +336,7 @@ class ddpg_agent:
                 g = observation_new['desired_goal']
                 per_success_rate.append(info['is_success'])
                 per_reward.append(reward)
-                if MPI.COMM_WORLD.Get_rank() == 0 and n > self.args.n_test_rollouts-4 and self.args.render:
+                if MPI.COMM_WORLD.Get_rank() == 0 and render:
                     frame = np.array(self.env.render(mode = 'rgb_array'))
                     frame = np.moveaxis(frame, -1, 0)
                     video.append(frame)
