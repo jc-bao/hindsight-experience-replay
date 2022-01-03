@@ -199,6 +199,11 @@ class ddpg_agent:
                     }, 
                     step=epoch*collect_per_epoch
                 )
+            # reset record parameters
+            self.her_module.total_sample_num = 1
+            self.her_module.relabel_num = 0
+            self.her_module.random_num = 0
+            self.her_module.nochange_num = 0
 
     # pre_process the inputs
     def _preproc_inputs(self, obs, g):

@@ -45,16 +45,10 @@ class her_sampler:
             random_musk = np.logical_and((np.logical_not(if_done)), np.logical_not(if_moved)).reshape(sample_size, num_obj,-1)
             nochange_musk = if_done.reshape(sample_size, num_obj,-1)
             # record parameters
-            if self.total_sample_num >= 12800:
-                self.total_sample_num = 1
-                self.relabel_num = 0
-                self.random_num = 0
-                self.nochange_num = 0
-            else:
-                self.total_sample_num += relabel_musk.size
-                self.relabel_num += np.sum(relabel_musk)
-                self.random_num += np.sum(random_musk)
-                self.nochange_num += np.sum(nochange_musk)
+            self.total_sample_num += relabel_musk.size
+            self.relabel_num += np.sum(relabel_musk)
+            self.random_num += np.sum(random_musk)
+            self.nochange_num += np.sum(nochange_musk)
             relabel_musk = np.repeat(relabel_musk, 3, axis=-1).reshape(sample_size, -1)
             random_musk = np.repeat(random_musk, 3, axis=-1).reshape(sample_size, -1)
             nochange_musk = np.repeat(nochange_musk, 3, axis=-1).reshape(sample_size, -1)
