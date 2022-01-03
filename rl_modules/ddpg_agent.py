@@ -172,7 +172,7 @@ class ddpg_agent:
                 curri_param = data['success_rate']
             if self.args.curriculum and curri_param > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end: 
-                    curriculum_param += 0.1
+                    curriculum_param += self.args.curriculum_step
                 self.env.change(curriculum_param)
                 if self.args.use_critic_sum:
                     if self.critic_network.num_goal < self.critic_network.num_obj:
