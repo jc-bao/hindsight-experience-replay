@@ -35,7 +35,7 @@ class ddpg_agent:
         # load paramters
         if args.resume:
             if self.args.model_path == None:
-                path = os.path.join(self.args.save_dir, self.args.env_name, self.args.exp, 'model.pt')
+                path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name, 'model.pt')
             else:
                 path = self.args.model_path
             try:
