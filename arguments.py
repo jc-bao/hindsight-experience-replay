@@ -35,6 +35,7 @@ def get_args():
     parser.add_argument('--cuda', action='store_true', help='if use gpu do the acceleration')
     parser.add_argument('--num-rollouts-per-mpi', type=int, default=2, help='the rollouts per mpi')
     parser.add_argument('--curriculum', action='store_true', help='if use curriculum to train')
+    parser.add_argument('--curriculum-reward', action='store_true', help='if use reward as curriculum bar')
     parser.add_argument('--resume', action='store_true', help='if resume old model')
     parser.add_argument('--curriculum-bar', default=0.5, type = float)
     parser.add_argument('--curriculum-init', default=0, type = float)
