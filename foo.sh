@@ -1,7 +1,6 @@
-mpirun --allow-run-as-root -np 64 python train.py --n-epochs 200 \
---env-name PandaTowerBimanual-v2 \
---curriculum --curriculum-reward --curriculum-bar -1.1 \
---max-trail-time 10 --use-critic-sum \
---wandb --project Bimanual --group 2obj \
---name 2obj_critic_sum_fix_curriculum --note use_critic_sum_curri \
---render --resume
+mpirun --allow-run-as-root -np 16 python train.py \
+--env-name PandaRearrange-v2 --max-trail-time 10 \
+--not-relabel-unmoved --random-unmoved \
+--wandb --project Relabel --group 1arm \
+--name moved_random \
+--render
