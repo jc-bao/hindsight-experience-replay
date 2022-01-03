@@ -34,22 +34,19 @@ class her_sampler:
             num_obj = int(goal_dim/3)
             old_ag = transitions['ag'][her_indexes]
             old_goal = transitions['g'][her_indexes]
-            if_moved = abs(future_ag - old_ag)>0.00001
-            if_moved = if_moved.reshape(sample_size, num_obj, 3)
-            musk = np.any(if_moved, axis=-1).reshape(sample_size, num_obj,-1)
-            self.replace_rate.append(np.sum(musk)/(sample_size*num_obj))
-            if len(self.replace_rate) == 5000:
-                # wandb.log({'her relabel ignore rate': mean(self.replace_rate)})
-                print(mean(self.replace_rate))
-                self.replace_rate = []
-            musk = np.repeat(musk, 3, axis=-1).reshape(sample_size, -1)
-            if self.random_unmoved:
+            if_done = np.linalg.norm(old_ag.reshape(sample_size, num_obj,3) - old_goal.reshape(sample_size, num_obj,3), axis=-1) < 0.05
+            if_moved = np.linalg.norm(future_ag.reshape(sample_size, num_obj,3) - old_ag.reshape(sample_size, num_obj,3), axis=-1) > 0.05
+            relabel_musk = np.logical_and((np.logical_not(if_done)), if_moved).reshape(sample_size, num_obj,-1)
+            random_musk = np.logical_and((np.logical_not(if_done)), np.logical_not(if_moved)).reshape(sample_size, num_obj,-1)
+            nochange_musk = if_done.reshape(sample_size, num_obj,-1)
+            relabel_musk = np.repeat(relabel_musk, 3, axis=-1).reshape(sample_size, -1)
+            random_musk = np.repeat(random_musk, 3, axis=-1).reshape(sample_size, -1)
+            nochange_musk = np.repeat(nochange_musk, 3, axis=-1).reshape(sample_size, -1)
+            if True:
                 random_goal = np.random.uniform([-0.4, -0.15, 0.02], [0.4, 0.15, 0.2], size=(sample_size, num_obj, 3)).reshape(sample_size, -1)
-                new_goal = future_ag*musk + random_goal*(1-musk)
+                new_goal = future_ag*relabel_musk + old_goal*nochange_musk + random_goal*random_musk
             else:
-                new_goal = future_ag*musk + old_goal*(1-musk)
-        else:
-            new_goal = future_ag
+                new_goal = future_ag*relabel_musk + old_goal*np.logical_or(nochange_musk, random_musk) 
         # CHANGE1: only change goal when ag is not same with ag
         # if self.not_relabel_unmoved:
         #     for i in range(len(future_ag)):
