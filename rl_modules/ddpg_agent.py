@@ -192,6 +192,7 @@ class ddpg_agent:
                         "reward": data['reward'], 
                         "curriculum param": curriculum_param, 
                         "run time": (time()-start_time)/3600, 
+                        "useless rollout per epoch": num_useless_rollout/(self.args.n_cycles*self.args.num_rollouts_per_mpi),
                         "future relabel rate": self.her_module.relabel_num/self.her_module.total_sample_num, 
                         "random relabel rate": self.her_module.random_num/self.her_module.total_sample_num, 
                         "not change relabel rate": self.her_module.nochange_num/self.her_module.total_sample_num, 
