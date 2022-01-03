@@ -1,3 +1,4 @@
+from typing import no_type_check
 import numpy as np
 from numpy.core.fromnumeric import mean
 import wandb
@@ -14,6 +15,10 @@ class her_sampler:
             self.future_p = 0
         self.reward_func = reward_func
         self.replace_rate = []
+        self.total_sample_num = 1
+        self.relabel_num = 0
+        self.random_num = 0
+        self.nochange_num = 0
 
     def sample_her_transitions(self, episode_batch, batch_size_in_transitions):
         T = episode_batch['actions'].shape[1]
@@ -39,6 +44,17 @@ class her_sampler:
             relabel_musk = np.logical_and((np.logical_not(if_done)), if_moved).reshape(sample_size, num_obj,-1)
             random_musk = np.logical_and((np.logical_not(if_done)), np.logical_not(if_moved)).reshape(sample_size, num_obj,-1)
             nochange_musk = if_done.reshape(sample_size, num_obj,-1)
+            # record parameters
+            if self.total_sample_num >= 12800:
+                self.total_sample_num = 1
+                self.relabel_num = 0
+                self.random_num = 0
+                self.nochange_num = 0
+            else:
+                self.total_sample_num += relabel_musk.size
+                self.relabel_num += np.sum(relabel_musk)
+                self.random_num += np.sum(random_musk)
+                self.nochange_num += np.sum(nochange_musk)
             relabel_musk = np.repeat(relabel_musk, 3, axis=-1).reshape(sample_size, -1)
             random_musk = np.repeat(random_musk, 3, axis=-1).reshape(sample_size, -1)
             nochange_musk = np.repeat(nochange_musk, 3, axis=-1).reshape(sample_size, -1)
