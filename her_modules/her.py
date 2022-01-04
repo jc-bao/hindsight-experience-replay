@@ -40,7 +40,7 @@ class her_sampler:
             old_ag = transitions['ag'][her_indexes]
             old_goal = transitions['g'][her_indexes]
             if_done = np.linalg.norm(old_ag.reshape(sample_size, num_obj,3) - old_goal.reshape(sample_size, num_obj,3), axis=-1) < 0.05
-            if_moved = np.linalg.norm(future_ag.reshape(sample_size, num_obj,3) - old_ag.reshape(sample_size, num_obj,3), axis=-1) > 0.05
+            if_moved = np.linalg.norm(future_ag.reshape(sample_size, num_obj,3) - old_ag.reshape(sample_size, num_obj,3), axis=-1) > 0.0005
             relabel_musk = np.logical_and((np.logical_not(if_done)), if_moved).reshape(sample_size, num_obj,-1)
             random_musk = np.logical_and((np.logical_not(if_done)), np.logical_not(if_moved)).reshape(sample_size, num_obj,-1)
             nochange_musk = if_done.reshape(sample_size, num_obj,-1)
