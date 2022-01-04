@@ -102,6 +102,7 @@ class ddpg_agent:
         curriculum_param = self.args.curriculum_init
         start_time = time()
         collect_per_epoch = self.args.n_cycles * self.args.num_rollouts_per_mpi * self.env_params['max_timesteps']
+        relabel_rate = 0.3
         for epoch in range(self.args.n_epochs):
             num_useless_rollout = 0 # record number of useless rollout(ag not change)
             for _ in range(self.args.n_cycles):
@@ -163,6 +164,8 @@ class ddpg_agent:
                 self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
                 if self.args.dynamic_batch: # update according to buffer size
                     update_times = int(self.args.n_batches * self.buffer.current_size / self.buffer.size)
+                elif self.args.her_batch:
+                    update_times = int(self.args.n_batches / relabel_rate)
                 else:
                     update_times = self.args.n_batches
                 for _ in range(update_times):
@@ -207,6 +210,7 @@ class ddpg_agent:
                     step=epoch*collect_per_epoch
                 )
             # reset record parameters
+            relabel_rate = self.her_module.relabel_num/self.her_module.total_sample_num
             self.her_module.total_sample_num = 1
             self.her_module.relabel_num = 0
             self.her_module.random_num = 0
