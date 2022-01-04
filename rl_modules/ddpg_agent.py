@@ -136,7 +136,14 @@ class ddpg_agent:
                             obs = obs_new
                             ag = ag_new
                         # check if use this rollout
-                        if np.sum(abs(ag - ag_origin))>0.01:
+                        if_moved = np.linalg.norm(ag.reshape(-1,3) - ag_origin.reshape(-1,3), axis=-1) > 0.005
+                        if self.args.trail_mode == 'all':
+                            if_moved = if_moved.all()
+                        elif self.args.trail_mode == 'any':
+                            if_moved = if_moved.any()
+                        else:
+                            raise NotImplementedError
+                        if if_moved:
                             break
                         else:
                             num_useless_rollout += 1
