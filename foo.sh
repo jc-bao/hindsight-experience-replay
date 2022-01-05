@@ -1,6 +1,5 @@
-mpirun --allow-run-as-root -np 64 python train.py --n-epochs 200 \
---env-name PandaTowerBimanual-v2 --max-trail-time 10 \
+mpirun -np 4 python train.py \
+--env-name PandaRearrange-v2 --max-trail-time 10 \
+--her-batch \
+--n-epoch 2 --n-cycle 2 --n-batch 2 --batch-size 8 \
 --not-relabel-unmoved --random-unmoved \
---wandb --project Bimanual --group 2obj \
---name 2obj_moved_and_random --note fix_in_air_and_fix_her \
---render 

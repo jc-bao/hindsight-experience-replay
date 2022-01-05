@@ -20,6 +20,9 @@ class ddpg_agent:
         self.args = args
         self.env = env
         self.env_params = env_params
+        # MPI
+        self.comm = MPI.COMM_WORLD
+        self.nprocs = self.comm.Get_size()
         # create the network and target network
         self.actor_network = actor(env_params)
         self.actor_target_network = actor(env_params)
@@ -102,7 +105,7 @@ class ddpg_agent:
         curriculum_param = self.args.curriculum_init
         start_time = time()
         collect_per_epoch = self.args.n_cycles * self.args.num_rollouts_per_mpi * self.env_params['max_timesteps']
-        relabel_rate = 0.3
+        global_relabel_rate = 0.3
         for epoch in range(self.args.n_epochs):
             num_useless_rollout = 0 # record number of useless rollout(ag not change)
             for _ in range(self.args.n_cycles):
@@ -165,7 +168,7 @@ class ddpg_agent:
                 if self.args.dynamic_batch: # update according to buffer size
                     update_times = int(self.args.n_batches * self.buffer.current_size / self.buffer.size)
                 elif self.args.her_batch:
-                    update_times = int(self.args.n_batches / relabel_rate)
+                    update_times = int(self.args.n_batches / global_relabel_rate)
                 else:
                     update_times = self.args.n_batches
                 for _ in range(update_times):
@@ -180,16 +183,24 @@ class ddpg_agent:
                 curri_param = data['reward']
             else:
                 curri_param = data['success_rate']
+            # record relabel rate
+            local_relabel_rate = self.her_module.relabel_num/self.her_module.total_sample_num
+            local_random_relabel_rate = self.her_module.random_num/self.her_module.total_sample_num
+            local_not_relabel_rate = self.her_module.nochange_num/self.her_module.total_sample_num
+            local_data = np.array([local_relabel_rate, local_random_relabel_rate, local_not_relabel_rate])
+            global_data = np.zeros(3)
+            self.comm.Allreduce(local_data, global_data, op=MPI.SUM)
+            global_relabel_rate, global_random_relabel_rate, global_not_relabel_rate = global_data/self.nprocs
+            # start curriculum
             if self.args.curriculum and curri_param > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end: 
                     curriculum_param += self.args.curriculum_step
-                self.env.change(curriculum_param)
-                if self.args.use_critic_sum:
-                    if self.critic_network.num_goal < self.critic_network.num_obj:
-                        self.critic_network.num_goal += 1
-                        self.critic_target_network.num_goal += 1
-                if MPI.COMM_WORLD.Get_rank() == 0:
-                    print(f"same_side_rate: {curriculum_param-0.1} -> {curriculum_param}")
+                # if self.args.use_critic_sum:
+                #     if self.critic_network.num_goal < self.critic_network.num_obj:
+                #         self.critic_network.num_goal += 1
+                #         self.critic_target_network.num_goal += 1
+            self.env.change(curriculum_param)
+            # local
             if MPI.COMM_WORLD.Get_rank() == 0 and self.args.wandb:
                 # save data
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
@@ -203,14 +214,13 @@ class ddpg_agent:
                         "curriculum param": curriculum_param, 
                         "run time": (time()-start_time)/3600, 
                         "useless rollout per epoch": num_useless_rollout/(self.args.n_cycles*self.args.num_rollouts_per_mpi),
-                        "future relabel rate": self.her_module.relabel_num/self.her_module.total_sample_num, 
-                        "random relabel rate": self.her_module.random_num/self.her_module.total_sample_num, 
-                        "not change relabel rate": self.her_module.nochange_num/self.her_module.total_sample_num, 
+                        "future relabel rate": global_relabel_rate, 
+                        "random relabel rate": global_random_relabel_rate, 
+                        "not change relabel rate": global_not_relabel_rate, 
                     }, 
                     step=epoch*collect_per_epoch
                 )
             # reset record parameters
-            relabel_rate = self.her_module.relabel_num/self.her_module.total_sample_num
             self.her_module.total_sample_num = 1
             self.her_module.relabel_num = 0
             self.her_module.random_num = 0
