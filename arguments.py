@@ -56,7 +56,7 @@ def get_args():
     parser.add_argument('--wandb', action='store_true')
     parser.add_argument('--project', type = str, default = 'debug')
     parser.add_argument('--group', type = str, default = 'ungrouped')
-    parser.add_argument('--tags', type = str, default = 'notag')
+    parser.add_argument('--tags', type = str, default = '')
     parser.add_argument('--name', type = str, default = 'noname')
     parser.add_argument('--note', type = str, default = '')
 
