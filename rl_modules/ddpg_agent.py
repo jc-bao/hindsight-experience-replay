@@ -102,11 +102,17 @@ class ddpg_agent:
         if self.args.warmup:
             self.warmup(100)
         # start to collect samples
-        curriculum_param = self.args.curriculum_init
         start_time = time()
         collect_per_epoch = self.args.n_cycles * self.args.num_rollouts_per_mpi * self.env_params['max_timesteps']
         global_relabel_rate = 0.3
+        curriculum_param = self.args.curriculum_init
+        curri_indicator = 0
         for epoch in range(self.args.n_epochs):
+            # start curriculum
+            if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
+                if curriculum_param < self.args.curriculum_end:
+                    curriculum_param += self.args.curriculum_step
+                self.env.change(curriculum_param)
             num_useless_rollout = 0 # record number of useless rollout(ag not change)
             for _ in range(self.args.n_cycles):
                 mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
@@ -180,9 +186,9 @@ class ddpg_agent:
             # start to do the evaluation
             data = self._eval_agent(render = ((epoch%10)==0  and self.args.render))
             if self.args.curriculum_reward:
-                curri_param = data['reward']
+                curri_indicator = data['reward']
             else:
-                curri_param = data['success_rate']
+                curri_indicator = data['success_rate']
             # record relabel rate
             local_relabel_rate = self.her_module.relabel_num/self.her_module.total_sample_num
             local_random_relabel_rate = self.her_module.random_num/self.her_module.total_sample_num
@@ -191,15 +197,10 @@ class ddpg_agent:
             global_data = np.zeros(3)
             self.comm.Allreduce(local_data, global_data, op=MPI.SUM)
             global_relabel_rate, global_random_relabel_rate, global_not_relabel_rate = global_data/self.nprocs
-            # start curriculum
-            if self.args.curriculum and curri_param > self.args.curriculum_bar:
-                if curriculum_param < self.args.curriculum_end: 
-                    curriculum_param += self.args.curriculum_step
-                # if self.args.use_critic_sum:
-                #     if self.critic_network.num_goal < self.critic_network.num_obj:
-                #         self.critic_network.num_goal += 1
-                #         self.critic_target_network.num_goal += 1
-            self.env.change(curriculum_param)
+            # if self.args.use_critic_sum:
+            #     if self.critic_network.num_goal < self.critic_network.num_obj:
+            #         self.critic_network.num_goal += 1
+            #         self.critic_target_network.num_goal += 1
             # local
             if MPI.COMM_WORLD.Get_rank() == 0 and self.args.wandb:
                 # save data
