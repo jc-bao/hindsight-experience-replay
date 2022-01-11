@@ -7,6 +7,7 @@ from rl_modules.ddpg_agent import ddpg_agent
 import random
 import torch
 import gym_xarm, gym_naive, panda_gym
+import fetch_block_construction
 
 """
 train the agent, the MPI part code is copy from openai baselines(https://github.com/openai/baselines/blob/master/baselines/her)

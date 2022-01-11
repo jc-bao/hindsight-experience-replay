@@ -59,6 +59,8 @@ def get_args():
     parser.add_argument('--tags', type = str, default = '')
     parser.add_argument('--name', type = str, default = 'noname')
     parser.add_argument('--note', type = str, default = '')
+    # ReNN
+    parser.add_argument('--use-renn', action='store_true')
 
     args = parser.parse_args()
 

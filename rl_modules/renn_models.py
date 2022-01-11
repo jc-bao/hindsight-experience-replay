@@ -10,7 +10,6 @@ class Attention(nn.Module):
         self.fc_createheads = nn.Linear(embedding_dim, num_heads * embedding_dim)
         self.fc_logit = nn.Linear(embedding_dim, 1)
         self.fc_reduceheads = nn.Linear(num_heads * embedding_dim, embedding_dim)
-        self.layer_norms = nn.ModuleList([nn.LayerNorm(i) for i in [num_heads*embedding_dim, 1, embedding_dim]])
         self.softmax_temperature = nn.Parameter(torch.tensor(softmax_temperature))
         self.activation_fnx = F.leaky_relu
 
@@ -38,7 +37,7 @@ class AttentiveGraphToGraph(nn.Module):
         super().__init__()
         self.fc_qcm = nn.Linear(embedding_dim, 3 * embedding_dim)
         self.attention = Attention(embedding_dim, num_heads=num_heads)
-        self.layer_norm= nn.LayerNorm(3*embedding_dim) if layer_norm else None
+        # self.layer_norm= nn.LayerNorm(3*embedding_dim) if layer_norm else None
 
     def forward(self, vertices):
         qcm_block = self.fc_qcm(vertices)
@@ -51,8 +50,6 @@ class AttentiveGraphPooling(nn.Module):
         self.embedding_dim = 64
         self.init_w=3e-3
         self.num_heads=1
-        self.fc_cm = nn.Linear(self.embedding_dim, 2 * self.embedding_dim)
-        self.layer_norm = nn.LayerNorm(2*self.embedding_dim)
         self.input_independent_query = nn.Parameter(torch.Tensor(self.embedding_dim))
         self.input_independent_query.data.uniform_(-self.init_w, self.init_w)
         self.attention = Attention(embedding_dim = self.embedding_dim, num_heads=self.num_heads)
@@ -74,8 +71,8 @@ class GraphPropagation(nn.Module):
         self.activation_fnx = F.leaky_relu
         self.graph_module_list = nn.ModuleList(
             [AttentiveGraphToGraph() for _ in range(self.num_relational_blocks)])
-        self.layer_norms = nn.ModuleList(
-            [nn.LayerNorm(self.embedding_dim) for i in range(self.num_relational_blocks)])
+        # self.layer_norms = nn.ModuleList(
+        #     [nn.LayerNorm(self.embedding_dim) for i in range(self.num_relational_blocks)])
 
     def forward(self, vertices):
         output = vertices
@@ -83,7 +80,7 @@ class GraphPropagation(nn.Module):
             new_output = self.graph_module_list[i](output)
             new_output = output + new_output
             output = self.activation_fnx(new_output)
-            output = self.layer_norms[i](output)
+            # output = self.layer_norms[i](output)
         return output
 
 class actor_ReNN(nn.Module):
@@ -95,20 +92,20 @@ class actor_ReNN(nn.Module):
         self.ignore_goal_size = 3 # ignore gripper pos
         self.mlp_in = nn.Sequential(
             nn.Linear(env_params['obs'] + env_params['goal'] - self.ignore_goal_size, 64),
-            nn.LayerNorm(64)
+            # nn.LayerNorm(64)
         )
         self.graph_propagation = GraphPropagation()
         self.read_out = AttentiveGraphPooling()
         self.mlp_out = nn.Sequential(
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.LayerNorm(64),
+            # nn.LayerNorm(64),
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.LayerNorm(64),
+            # nn.LayerNorm(64),
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.LayerNorm(64),
+            # nn.LayerNorm(64),
             nn.Linear(64, env_params['action'])
         )
 
@@ -151,20 +148,20 @@ class critic_ReNN(nn.Module):
         self.ignore_goal_size = 3 # ignore gripper pos
         self.mlp_in = nn.Sequential(
             nn.Linear(env_params['action'] + env_params['obs'] + env_params['goal'] - self.ignore_goal_size, 64),
-            nn.LayerNorm(64)
+            # nn.LayerNorm(64)
         )
         self.graph_propagation = GraphPropagation()
         self.read_out = AttentiveGraphPooling()
         self.mlp_out = nn.Sequential(
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.LayerNorm(64),
+            # nn.LayerNorm(64),
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.LayerNorm(64),
+            # nn.LayerNorm(64),
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.LayerNorm(64),
+            # nn.LayerNorm(64),
             nn.Linear(64, 1)
         )
 

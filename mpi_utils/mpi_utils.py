@@ -28,6 +28,10 @@ def _get_flat_params_or_grads(network, mode='params'):
 
     """
     attr = 'data' if mode == 'params' else 'grad'
+    if mode=='grads':
+        for name, param in network.named_parameters():
+            if getattr(param, attr) == None:
+                print(name, param)
     return np.concatenate([getattr(param, attr).cpu().numpy().flatten() for param in network.parameters()])
 
 def _set_flat_params_or_grads(network, flat_params, mode='params'):
