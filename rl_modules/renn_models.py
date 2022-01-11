@@ -17,7 +17,7 @@ class Attention(nn.Module):
         batch_size, num_obj, obs_size = query.size()
         num_head = int(self.fc_createheads.out_features / obs_size)
         query = self.fc_createheads(query).view(batch_size, num_obj, num_head, obs_size)
-        query = query.unsqueeze(2).expand(-1, -1, num_obj, -1, -1)
+        query = query.unsqueeze(2).expand(-1, -1, memory.size(1), -1, -1) # TODO not understand
         context = context.unsqueeze(1).unsqueeze(3).expand_as(query)
         qc_logits = self.fc_logit(torch.tanh(context + query))
         attention_probs = F.softmax(qc_logits / self.softmax_temperature, dim=2)
@@ -91,7 +91,7 @@ class actor_ReNN(nn.Module):
         self.robot_obs_size = 10
         self.ignore_goal_size = 3 # ignore gripper pos
         self.mlp_in = nn.Sequential(
-            nn.Linear(env_params['obs'] + env_params['goal'] - self.ignore_goal_size, 64),
+            nn.Linear(self.robot_obs_size+self.obj_obs_size+self.goal_size, 64),
             # nn.LayerNorm(64)
         )
         self.graph_propagation = GraphPropagation()
@@ -147,7 +147,7 @@ class critic_ReNN(nn.Module):
         self.robot_obs_size = 10
         self.ignore_goal_size = 3 # ignore gripper pos
         self.mlp_in = nn.Sequential(
-            nn.Linear(env_params['action'] + env_params['obs'] + env_params['goal'] - self.ignore_goal_size, 64),
+            nn.Linear(env_params['action'] + self.robot_obs_size+self.obj_obs_size+self.goal_size, 64),
             # nn.LayerNorm(64)
         )
         self.graph_propagation = GraphPropagation()

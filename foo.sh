@@ -1,11 +1,11 @@
-mpirun --allow-run-as-root -np 64 \
-	python train.py --n-epochs 200 \
-	--env-name 'FetchBlockConstruction_1Blocks_IncrementalReward_DictstateObs_42Rendersize_FalseStackonly_SingletowerCase-v1' \
+# mpirun --allow-run-as-root -np 35 \
+	python train.py \
+	--lr-actor 0.0003 --lr-critic 0.0003 \
+	--buffer-size 100000 \
+	--env-name 'FetchBlockConstruction_2Blocks_IncrementalReward_DictstateObs_42Rendersize_TrueStackonly_SingletowerCase-v1' \
 	--max-trail-time 10 \
-	--use-renn 
-	--trail-mode any \
-	--not-relabel-unmoved --random-unmoved \
-	--curriculum --curriculum-bar 0.9 --curriculum-init 0.8 --curriculum-step 0.1 \
-	--wandb --project Bimanual --group 2obj \
-	--name os1_resume_os \
-	--render --resume --model-path '/rl/hindsight-experience-replay/saved_models/PandaTowerBimanualOtherSide-v2/os1_resume_os/backup.pt'
+	--use-renn \
+	--resume --model-path '/Users/reedpan/Downloads/model.pt'
+	# --wandb --project Multi-Object --group 1obj \
+	# --name ReNN2-stackonly \
+	# --render \

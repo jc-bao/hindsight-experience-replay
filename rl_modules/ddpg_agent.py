@@ -79,10 +79,21 @@ class ddpg_agent:
         self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
         self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
         if args.resume:
-            self.o_norm.std = o_std
-            self.o_norm.mean = o_mean
-            self.g_norm.std = g_std
-            self.g_norm.mean = g_mean
+            # Note: if use object number curriculum, the normalizer need to be extended
+            o_extend_length = len(self.o_norm.std) - len(o_std)
+            if o_extend_length == 0:
+                self.o_norm.std = o_std
+                self.o_norm.mean = o_mean
+            else:
+                self.o_norm.std = np.append(o_std, o_std[-o_extend_length:])
+                self.o_norm.mean = np.append(o_mean, o_mean[-o_extend_length:])
+            g_extend_length = len(self.g_norm.std) - len(g_std)
+            if g_extend_length == 0:
+                self.g_norm.std = g_std
+                self.g_norm.mean = g_mean
+            else:
+                self.g_norm.std = np.append(g_std, g_std[-g_extend_length:])
+                self.g_norm.mean = np.append(g_mean, g_mean[-g_extend_length:])
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             # if not os.path.exists(self.args.save_dir):
