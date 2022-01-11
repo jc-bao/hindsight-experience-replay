@@ -11,6 +11,7 @@ from rl_modules.renn_models import actor_ReNN, critic_ReNN
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
 import wandb
+from tqdm import tqdm
 
 """
 ddpg with HER (MPI-version)
@@ -133,7 +134,7 @@ class ddpg_agent:
                     curriculum_param += self.args.curriculum_step
                 self.env.change(curriculum_param)
             num_useless_rollout = 0 # record number of useless rollout(ag not change)
-            for _ in range(self.args.n_cycles):
+            for _ in tqdm(range(self.args.n_cycles)):
                 mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
                 for _ in range(self.args.num_rollouts_per_mpi):
                     # try until collect successful experience

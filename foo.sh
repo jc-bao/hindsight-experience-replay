@@ -1,4 +1,5 @@
 # mpirun --allow-run-as-root -np 35 \
+mpirun -np 2 \
 	python train.py \
 	--lr-actor 0.0003 --lr-critic 0.0003 \
 	--buffer-size 100000 \
