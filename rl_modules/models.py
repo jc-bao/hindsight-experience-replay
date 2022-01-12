@@ -43,56 +43,93 @@ class critic(nn.Module):
 
         return q_value
 
+class actor_bilinear(nn.Module):
+    def __init__(self, env_params):
+        super(actor_bilinear, self).__init__()
+        self.env_params = env_params
+        self.max_action = env_params['action_max']
+        self.goal_size = env_params['goal_size']
+        self.obj_obs_size = env_params['obj_obs_size']
+        self.robot_obs_size = env_params['robot_obs_size']
+        # pi(s, g)
+        self.pi = nn.Sequential(
+            nn.Linear(env_params['obs'] + env_params['goal'], 176), 
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, env_params['action'])
+        )
+
+    def forward(self, x):
+        batch_size, obs_size = x.shape
+        # pi(s, g)
+        assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0, \
+            f'Shape ERROR! obs_size{obs_size}, robot{self.robot_obs_size}, obj&goal{self.obj_obs_size+self.goal_size}'
+        num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))
+        robot_obs = x[:, :self.robot_obs_size].repeat(1,num_obj).reshape(batch_size, num_obj, self.robot_obs_size)
+        obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
+            .reshape(batch_size, num_obj, self.obj_obs_size)
+        goal_obs = x[:, self.robot_obs_size+self.obj_obs_size*num_obj:]\
+            .reshape(batch_size, num_obj, self.goal_size)
+        sg = torch.cat((robot_obs, obj_obs, goal_obs), dim=-1)
+        pi = self.pi(sg)
+        pi = torch.sum(pi, axis=-2)
+
+        return pi
+
 class critic_bilinear(nn.Module):
     def __init__(self, env_params):
         self.env_params = env_params
         super(critic_bilinear, self).__init__()
         self.max_action = env_params['action_max']
+        self.goal_size = env_params['goal_size']
+        self.obj_obs_size = env_params['obj_obs_size']
+        self.robot_obs_size = env_params['robot_obs_size']
         # f(s, a)
-        self.fc1_1 = nn.Linear(env_params['obs'] + env_params['action'], 176)
-        self.fc1_2 = nn.Linear(176, 176)
-        self.fc1_3 = nn.Linear(176, 176)
-        self.fc1_4 = nn.Linear(176, 16)
+        self.f = nn.Sequential(
+            nn.Linear(env_params['obs'] + env_params['action'], 176), 
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, 16)
+        )
         # phi(s, g)
-        self.fc2_1 = nn.Linear(env_params['obs'] + env_params['goal'], 176)
-        self.fc2_2 = nn.Linear(176, 176)
-        self.fc2_3 = nn.Linear(176, 176)
-        self.fc2_4 = nn.Linear(176, 16)
-        self.num_obj = 1
+        self.phi = nn.Sequential(
+            nn.Linear(env_params['obs'] + env_params['goal'], 176), 
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, 16)
+        )
 
     def forward(self, x, actions):
+        batch_size, obs_size = x.shape
         # f(s, a)
-        x1 = torch.cat([x[...,:self.env_params['obs']], actions / self.max_action], dim=1)
-        x1 = F.relu(self.fc1_1(x1))
-        x1 = F.relu(self.fc1_2(x1))
-        x1 = F.relu(self.fc1_3(x1))
-        x1 = self.fc1_4(x1)
-        if self.num_obj == 1:
-            # phi(s, g)
-            x2 = F.relu(self.fc2_1(x))
-            x2 = F.relu(self.fc2_2(x2))
-            x2 = F.relu(self.fc2_3(x2))
-            x2 = self.fc2_4(x2)
-            #dot product
-            q_value = torch.einsum('bs,bs->b', x1, x2).reshape(-1, 1)
-        elif self.num_obj == 2:
-            # phi(s, g)
-            goal1 = x[...,-6:-3]
-            x2 = torch.cat([x[...,:self.env_params['obs']], goal1], dim=1)
-            x2 = F.relu(self.fc2_1(x2))
-            x2 = F.relu(self.fc2_2(x2))
-            x2 = F.relu(self.fc2_3(x2))
-            x2 = self.fc2_4(x2)
-            goal2 = x[...,-3:]
-            x3 = torch.cat([x[...,:self.env_params['obs']], goal2], dim=1)
-            x3 = F.relu(self.fc2_1(x3))
-            x3 = F.relu(self.fc2_2(x3))
-            x3 = F.relu(self.fc2_3(x3))
-            x3 = self.fc2_4(x3)
-            #dot product
-            q_value = torch.einsum('bs,bs,bs->b', x1, x2, x3).reshape(-1, 1)
+        sa = torch.cat([x[...,:self.env_params['obs']], actions / self.max_action], dim=1)
+        f = self.f(sa)
+        # phi(s, g)
+        assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0, \
+            f'Shape ERROR! obs_size{obs_size}, robot{self.robot_obs_size}, obj&goal{self.obj_obs_size+self.goal_size}'
+        num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))
+        robot_obs = x[:, :self.robot_obs_size].repeat(1,num_obj).reshape(batch_size, num_obj, self.robot_obs_size)
+        obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
+            .reshape(batch_size, num_obj, self.obj_obs_size)
+        goal_obs = x[:, self.robot_obs_size+self.obj_obs_size*num_obj:]\
+            .reshape(batch_size, num_obj, self.goal_size)
+        sg = torch.cat((robot_obs, obj_obs, goal_obs), dim=-1)
+        phi = self.phi(sg)
+        phi = torch.sum(phi, axis=-2)
+        #dot product
+        q_value = torch.einsum('bs,bs->b', f, phi).reshape(-1, 1)
 
         return q_value
+
 class critic_sum(nn.Module):
     def __init__(self, env_params):
         super(critic_sum, self).__init__()
