@@ -63,3 +63,17 @@ class replay_buffer:
         if inc == 1:
             idx = idx[0]
         return idx
+
+    def change_size(self, max_timesteps, obs_size, goal_size):
+        if max_timesteps == self.T:
+            return
+        self.T = max_timesteps
+        self.current_size = 0
+        self.n_transitions_stored = 0
+        # create new buffer to store info
+        del self.buffers
+        self.buffers = {'obs': np.empty([self.size, self.T + 1, obs_size]),
+                        'ag': np.empty([self.size, self.T + 1, goal_size]),
+                        'g': np.empty([self.size, self.T, goal_size]),
+                        'actions': np.empty([self.size, self.T, self.env_params['action']]),
+                        }

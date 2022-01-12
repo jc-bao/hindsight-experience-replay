@@ -86,10 +86,10 @@ class GraphPropagation(nn.Module):
 class actor_ReNN(nn.Module):
     def __init__(self, env_params):
         super().__init__()
-        self.goal_size = 3
-        self.obj_obs_size = 15
-        self.robot_obs_size = 10
-        self.ignore_goal_size = 3 # ignore gripper pos
+        self.goal_size = env_params['goal_size']
+        self.obj_obs_size = env_params['obj_obs_size'] #12 #15
+        self.robot_obs_size = env_params['robot_obs_size'] #14 #10
+        self.ignore_goal_size = env_params['ignore_goal_size'] #0 #3 # ignore gripper pos
         self.mlp_in = nn.Sequential(
             nn.Linear(self.robot_obs_size+self.obj_obs_size+self.goal_size, 64),
             # nn.LayerNorm(64)
@@ -128,9 +128,11 @@ class actor_ReNN(nn.Module):
             obs_size = robot_obs_size + num_obj * object_obs_size + num_obj * goal_size
         return: (batch_size, num_obj, object_obs_size + robot_obs_size)
         '''
-        x = x[...,:-self.ignore_goal_size] # ignore useless part
+        if self.ignore_goal_size > 0:
+            x = x[...,:-self.ignore_goal_size] # ignore useless part
         batch_size, obs_size = x.shape
-        assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0
+        assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0, \
+            f'Shape ERROR! obs_size{obs_size}, robot{self.robot_obs_size}, obj&goal{self.obj_obs_size+self.goal_size}'
         num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))
         robot_obs = x[:, :self.robot_obs_size].repeat(1,num_obj).reshape(batch_size, num_obj, self.robot_obs_size)
         obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
@@ -142,10 +144,10 @@ class actor_ReNN(nn.Module):
 class critic_ReNN(nn.Module):
     def __init__(self, env_params):
         super().__init__()
-        self.goal_size = 3
-        self.obj_obs_size = 15
-        self.robot_obs_size = 10
-        self.ignore_goal_size = 3 # ignore gripper pos
+        self.goal_size = env_params['goal_size']
+        self.obj_obs_size = env_params['obj_obs_size'] #12 #15
+        self.robot_obs_size = env_params['robot_obs_size'] #14 #10
+        self.ignore_goal_size = env_params['ignore_goal_size'] #0 #3 # ignore gripper pos
         self.mlp_in = nn.Sequential(
             nn.Linear(env_params['action'] + self.robot_obs_size+self.obj_obs_size+self.goal_size, 64),
             # nn.LayerNorm(64)
@@ -184,7 +186,8 @@ class critic_ReNN(nn.Module):
             obs_size = robot_obs_size + num_obj * object_obs_size + num_obj * goal_size
         return: (batch_size, num_obj, object_obs_size + robot_obs_size)
         '''
-        x = x[...,:-self.ignore_goal_size] # ignore useless part
+        if self.ignore_goal_size > 0:
+            x = x[...,:-self.ignore_goal_size] # ignore useless part
         batch_size, obs_size = x.shape
         assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0
         num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))

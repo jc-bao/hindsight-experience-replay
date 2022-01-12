@@ -1,3 +1,4 @@
+from logging import exception
 import numpy as np
 import gym
 import os, sys
@@ -15,13 +16,33 @@ train the agent, the MPI part code is copy from openai baselines(https://github.
 """
 def get_env_params(env):
     obs = env.reset()
-    # close the environment
+    # get parameter for ReNN (if config not found, use default for fetch env)
+    try:
+        obj_obs_size = env.task.obj_obs_size
+    except:
+        obj_obs_size = 15
+    try:
+        robot_obs_size = env.robot_obs_size
+    except:
+        robot_obs_size = 10
+    try:
+        ignore_goal_size = env.task.ignore_goal_size
+    except:
+        ignore_goal_size = 3
+    try:
+        goal_size = env.task.goal_size
+    except:
+        goal_size = 3
     params = {'obs': obs['observation'].shape[0],
             'goal': obs['desired_goal'].shape[0],
             'action': env.action_space.shape[0],
             'action_max': env.action_space.high[0],
+            'max_timesteps': env._max_episode_steps,
+            'obj_obs_size': obj_obs_size, 
+            'robot_obs_size': robot_obs_size,
+            'ignore_goal_size': ignore_goal_size,
+            'goal_size': goal_size,
             }
-    params['max_timesteps'] = env._max_episode_steps
     return params
 
 def launch(args):

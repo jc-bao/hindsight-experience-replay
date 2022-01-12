@@ -51,7 +51,7 @@ class ddpg_agent:
             else:
                 path = self.args.model_path
             try:
-                o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+                o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             except:
                 print('fail to load the model!')
             print('loaded done!')
@@ -81,20 +81,22 @@ class ddpg_agent:
         self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
         if args.resume:
             # Note: if use object number curriculum, the normalizer need to be extended
-            o_extend_length = len(self.o_norm.std) - len(o_std)
-            if o_extend_length == 0:
-                self.o_norm.std = o_std
-                self.o_norm.mean = o_mean
-            else:
-                self.o_norm.std = np.append(o_std, o_std[-o_extend_length:])
-                self.o_norm.mean = np.append(o_mean, o_mean[-o_extend_length:])
-            g_extend_length = len(self.g_norm.std) - len(g_std)
-            if g_extend_length == 0:
-                self.g_norm.std = g_std
-                self.g_norm.mean = g_mean
-            else:
-                self.g_norm.std = np.append(g_std, g_std[-g_extend_length:])
-                self.g_norm.mean = np.append(g_mean, g_mean[-g_extend_length:])
+            self.o_norm.load(o_dict)
+            self.g_norm.load(g_dict)
+            # o_extend_length = len(self.o_norm.std) - len(o_std)
+            # if o_extend_length == 0:
+            #     self.o_norm.std = o_std
+            #     self.o_norm.mean = o_mean
+            # else:
+            #     self.o_norm.std = np.append(o_std, o_std[-o_extend_length:])
+            #     self.o_norm.mean = np.append(o_mean, o_mean[-o_extend_length:])
+            # g_extend_length = len(self.g_norm.std) - len(g_std)
+            # if g_extend_length == 0:
+            #     self.g_norm.std = g_std
+            #     self.g_norm.mean = g_mean
+            # else:
+            #     self.g_norm.std = np.append(g_std, g_std[-g_extend_length:])
+            #     self.g_norm.mean = np.append(g_mean, g_mean[-g_extend_length:])
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             # if not os.path.exists(self.args.save_dir):
@@ -133,6 +135,15 @@ class ddpg_agent:
                 if curriculum_param < self.args.curriculum_end:
                     curriculum_param += self.args.curriculum_step
                 self.env.change(curriculum_param)
+                observation = self.env.reset()
+                # extend normalizer to new observation
+                o_size = len(observation['observation'])
+                g_size = len(observation['desired_goal'])
+                self.o_norm.change_size(new_size = o_size)
+                self.g_norm.change_size(new_size = g_size)
+                # extend buffer to new observation
+                self.buffer.change_size(max_timesteps=self.env._max_episode_steps,\
+                    obs_size=o_size, goal_size=g_size)
             num_useless_rollout = 0 # record number of useless rollout(ag not change)
             for _ in tqdm(range(self.args.n_cycles)):
                 mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
@@ -148,7 +159,7 @@ class ddpg_agent:
                         g = observation['desired_goal']
                         # start to collect samples
                         ag_origin = ag
-                        for t in range(self.env_params['max_timesteps']):
+                        for t in range(self.env._max_episode_steps):
                             with torch.no_grad():
                                 input_tensor = self._preproc_inputs(obs, g)
                                 pi = self.actor_network(input_tensor)
@@ -222,25 +233,26 @@ class ddpg_agent:
             #         self.critic_network.num_goal += 1
             #         self.critic_target_network.num_goal += 1
             # local
-            if MPI.COMM_WORLD.Get_rank() == 0 and self.args.wandb:
+            if MPI.COMM_WORLD.Get_rank() == 0:
                 # save data
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
-                torch.save([self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std, self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + '/model.pt')
-                # log data
-                wandb.log(
-                    {
-                        'success rate': data['success_rate'], 
-                        "reward": data['reward'], 
-                        "curriculum param": curriculum_param, 
-                        "run time": (time()-start_time)/3600, 
-                        "useless rollout per epoch": num_useless_rollout/(self.args.n_cycles*self.args.num_rollouts_per_mpi),
-                        "future relabel rate": global_relabel_rate, 
-                        "random relabel rate": global_random_relabel_rate, 
-                        "not change relabel rate": global_not_relabel_rate, 
-                    }, 
-                    step=epoch*collect_per_epoch
-                )
+                if self.args.wandb:
+                    # log data
+                    wandb.log(
+                        {
+                            'success rate': data['success_rate'], 
+                            "reward": data['reward'], 
+                            "curriculum param": curriculum_param, 
+                            "run time": (time()-start_time)/3600, 
+                            "useless rollout per epoch": num_useless_rollout/(self.args.n_cycles*self.args.num_rollouts_per_mpi),
+                            "future relabel rate": global_relabel_rate, 
+                            "random relabel rate": global_random_relabel_rate, 
+                            "not change relabel rate": global_not_relabel_rate, 
+                        }, 
+                        step=epoch*collect_per_epoch
+                    )
             # reset record parameters
             self.her_module.total_sample_num = 1
             self.her_module.relabel_num = 0

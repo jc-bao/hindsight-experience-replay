@@ -68,3 +68,54 @@ class normalizer:
         if clip_range is None:
             clip_range = self.default_clip_range
         return np.clip((v - self.mean) / (self.std), -clip_range, clip_range)
+
+    # extend to new observation
+    def change_size(self, old_size = None, new_size = None):
+        if new_size == None: # default to extend to currient setting
+            new_size = self.size
+        if old_size == None:
+            old_size = self.size
+            self.size = new_size
+        assert (old_size <= new_size) and (new_size <= old_size*2), \
+            f'Old size:{old_size}, New size:{new_size}'
+        if old_size == new_size:
+            return
+        extend_length = new_size - old_size
+        # local information
+        self.local_sum = np.append(self.local_sum, self.local_sum[-extend_length:])
+        self.local_sumsq = np.append(self.local_sumsq, self.local_sumsq[-extend_length:])
+        # total sum sumsq and sum count
+        self.total_sum = np.append(self.total_sum, self.total_sum[-extend_length:])
+        self.total_sumsq = np.append(self.total_sumsq, self.total_sumsq[-extend_length:])
+        # get the mean and std
+        self.mean = np.append(self.mean, self.mean[-extend_length:])
+        self.std = np.append(self.std, self.std[-extend_length:])
+
+    def load(self, config):
+        self.eps = config['eps']
+        self.default_clip_range = config['default_clip_range']
+        self.local_sum = config['local_sum']
+        self.local_sumsq = config['local_sumsq']
+        self.local_count = config['local_count']
+        self.total_sum = config['total_sum']
+        self.total_sumsq = config['total_sumsq']
+        self.total_count = config['total_count']
+        self.mean = config['mean']
+        self.std = config['std']
+        self.change_size(old_size = config['size'])
+
+    def state_dict(self):
+        config = {
+            'size': self.size, 
+            'eps': self.eps, 
+            'default_clip_range': self.default_clip_range, 
+            'local_sum': self.local_sum, 
+            'local_sumsq': self.local_sumsq, 
+            'local_count': self.local_count, 
+            'total_sum': self.total_sum, 
+            'total_sumsq': self.total_sumsq, 
+            'total_count': self.total_count, 
+            'mean': self.mean, 
+            'std': self.std
+        }
+        return config
