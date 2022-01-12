@@ -59,28 +59,9 @@ class her_sampler:
                 new_goal = future_ag*relabel_musk + old_goal*np.logical_or(nochange_musk, random_musk) 
         else:
             new_goal = future_ag
-        # CHANGE1: only change goal when ag is not same with ag
-        # if self.not_relabel_unmoved:
-        #     for i in range(len(future_ag)):
-        #         if not (future_ag[i][:3] == transitions['ag'][her_indexes[i]][:3]).all():
-        #             transitions['g'][her_indexes[i]][:3] = future_ag[i][:3]
-        #         elif self.random_unmoved:
-        #             if transitions['g'][her_indexes[i]][0] > 0: 
-        #                 transitions['g'][her_indexes[i]][:3] = np.random.uniform([0.1, -0.18], [0.3, 0.18])
-        #             else: 
-        #                 transitions['g'][her_indexes[i]][:3] = np.random.uniform([-0.3, -0.18], [-0.1, 0.18])
-        #         if not (future_ag[i][3:6] == transitions['ag'][her_indexes[i]][3:6]).all():
-        #             transitions['g'][her_indexes[i]][3:6] = future_ag[i][3:6]
-        #         else:
-        #             if transitions['g'][her_indexes[i]][0] > 0: 
-        #                 transitions['g'][her_indexes[i]][3:6] = np.random.uniform([0.1, -0.18], [0.3, 0.18])
-        #             else: 
-        #                 transitions['g'][her_indexes[i]][3:6] = np.random.uniform([-0.3, -0.18], [-0.1, 0.18])
-        # else:
-        #     # replace goal with achieved goal
         transitions['g'][her_indexes] = new_goal
         # to get the params to re-compute reward
-        transitions['r'] = np.expand_dims([self.reward_func(transitions['ag_next'][i], transitions['g'][i], None) for i in range(len(transitions['g']))], 1)
+        transitions['r'] = np.expand_dims([self.reward_func(transitions['ag_next'][i], transitions['g'][i], transitions['info'][i]) for i in range(len(transitions['g']))], 1)
         transitions = {k: transitions[k].reshape(batch_size, *transitions[k].shape[1:]) for k in transitions.keys()}
  
         return transitions

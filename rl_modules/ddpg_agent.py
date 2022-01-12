@@ -87,20 +87,6 @@ class ddpg_agent:
             # Note: if use object number curriculum, the normalizer need to be extended
             self.o_norm.load(o_dict)
             self.g_norm.load(g_dict)
-            # o_extend_length = len(self.o_norm.std) - len(o_std)
-            # if o_extend_length == 0:
-            #     self.o_norm.std = o_std
-            #     self.o_norm.mean = o_mean
-            # else:
-            #     self.o_norm.std = np.append(o_std, o_std[-o_extend_length:])
-            #     self.o_norm.mean = np.append(o_mean, o_mean[-o_extend_length:])
-            # g_extend_length = len(self.g_norm.std) - len(g_std)
-            # if g_extend_length == 0:
-            #     self.g_norm.std = g_std
-            #     self.g_norm.mean = g_mean
-            # else:
-            #     self.g_norm.std = np.append(g_std, g_std[-g_extend_length:])
-            #     self.g_norm.mean = np.append(g_mean, g_mean[-g_extend_length:])
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             # if not os.path.exists(self.args.save_dir):
@@ -150,17 +136,18 @@ class ddpg_agent:
                     obs_size=o_size, goal_size=g_size)
             num_useless_rollout = 0 # record number of useless rollout(ag not change)
             for _ in tqdm(range(self.args.n_cycles)):
-                mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
+                mb_obs, mb_ag, mb_g, mb_info, mb_actions = [], [], [], [], []
                 for _ in range(self.args.num_rollouts_per_mpi):
                     # try until collect successful experience
                     for j in range(self.args.max_trail_time):
                         # reset the rollouts
-                        ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+                        ep_obs, ep_ag, ep_g, ep_info, ep_actions = [], [], [], [], []
                         # reset the environment
                         observation = self.env.reset()
                         obs = observation['observation']
                         ag = observation['achieved_goal']
                         g = observation['desired_goal']
+                        info = observation.get('info') # if no info, return None
                         # start to collect samples
                         ag_origin = ag
                         for t in range(self.env._max_episode_steps):
@@ -176,6 +163,7 @@ class ddpg_agent:
                             ep_obs.append(obs.copy())
                             ep_ag.append(ag.copy())
                             ep_g.append(g.copy())
+                            ep_info.append(info.copy())
                             ep_actions.append(action.copy())
                             # re-assign the observation
                             obs = obs_new
@@ -196,16 +184,18 @@ class ddpg_agent:
                     ep_ag.append(ag.copy())
                     mb_obs.append(ep_obs)
                     mb_ag.append(ep_ag)
+                    mb_info.append(ep_info)
                     mb_g.append(ep_g)
                     mb_actions.append(ep_actions)
                 # convert them into arrays
                 mb_obs = np.array(mb_obs)
                 mb_ag = np.array(mb_ag)
                 mb_g = np.array(mb_g)
+                mb_info = np.array(mb_info)
                 mb_actions = np.array(mb_actions)
                 # store the episodes
-                self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
-                self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
+                self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_info, mb_actions])
+                self._update_normalizer([mb_obs, mb_ag, mb_g, mb_info, mb_actions])
                 if self.args.dynamic_batch: # update according to buffer size
                     update_times = int(self.args.n_batches * self.buffer.current_size / self.buffer.size)
                 elif self.args.her_batch:
@@ -289,7 +279,7 @@ class ddpg_agent:
 
     # update the normalizer
     def _update_normalizer(self, episode_batch):
-        mb_obs, mb_ag, mb_g, mb_actions = episode_batch
+        mb_obs, mb_ag, mb_g, mb_info, mb_actions = episode_batch
         mb_obs_next = mb_obs[:, 1:, :]
         mb_ag_next = mb_ag[:, 1:, :]
         # get the number of normalization transitions
@@ -298,6 +288,7 @@ class ddpg_agent:
         buffer_temp = {'obs': mb_obs, 
                        'ag': mb_ag,
                        'g': mb_g, 
+                       'info': mb_info, 
                        'actions': mb_actions, 
                        'obs_next': mb_obs_next,
                        'ag_next': mb_ag_next,
@@ -425,7 +416,7 @@ class ddpg_agent:
         mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
         for _ in range(num_rollout):
             ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
-            # reset the environment
+            # reset the environmentz
             observation = self.env.reset()
             obs = observation['observation']
             ag = observation['achieved_goal']
@@ -457,4 +448,4 @@ class ddpg_agent:
         mb_actions = np.array(mb_actions)
         # store the episodes
         self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
-        self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
+        self._update_normalizer([mb_obs, mb_ag, mb_g , mb_actions])

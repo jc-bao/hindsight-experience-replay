@@ -26,10 +26,6 @@ def get_env_params(env):
     except:
         robot_obs_size = 10
     try:
-        ignore_goal_size = env.task.ignore_goal_size
-    except:
-        ignore_goal_size = 3
-    try:
         goal_size = env.task.goal_size
     except:
         goal_size = 3
@@ -44,7 +40,7 @@ def get_env_params(env):
             'max_timesteps': env._max_episode_steps,
             'obj_obs_size': obj_obs_size, 
             'robot_obs_size': robot_obs_size,
-            'ignore_goal_size': ignore_goal_size,
+            'ignore_goal_size': 0,
             'goal_size': goal_size,
             'num_agents': num_agents, 
             'dim': args.dim
