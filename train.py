@@ -33,6 +33,10 @@ def get_env_params(env):
         goal_size = env.task.goal_size
     except:
         goal_size = 3
+    try:
+        num_agents = env.num_agents 
+    except:
+        num_agents = 1
     params = {'obs': obs['observation'].shape[0],
             'goal': obs['desired_goal'].shape[0],
             'action': env.action_space.shape[0],
@@ -42,6 +46,7 @@ def get_env_params(env):
             'robot_obs_size': robot_obs_size,
             'ignore_goal_size': ignore_goal_size,
             'goal_size': goal_size,
+            'num_agents': num_agents
             }
     return params
 
@@ -55,7 +60,11 @@ def launch(args):
     #     'use_stand': False, 
     # }
     # env = gym.make('XarmHandover-v0', config = config)
-    env = gym.make(args.env_name)
+    if 'formation' in args.env_name:
+        import formation_gym
+        env = formation_gym.make_env(args.env_name, benchmark=False, num_agents = args.num_agents)
+    else:
+        env = gym.make(args.env_name)
     # set random seeds for reproduce
     env.seed(args.seed + MPI.COMM_WORLD.Get_rank())
     random.seed(args.seed + MPI.COMM_WORLD.Get_rank())
