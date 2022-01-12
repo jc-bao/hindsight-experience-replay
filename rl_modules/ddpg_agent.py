@@ -255,7 +255,7 @@ class ddpg_agent:
                             "random relabel rate": global_random_relabel_rate, 
                             "not change relabel rate": global_not_relabel_rate, 
                         }, 
-                        step=epoch*collect_per_epoch
+                        step=(epoch+1)*collect_per_epoch
                     )
             # reset record parameters
             self.her_module.total_sample_num = 1
