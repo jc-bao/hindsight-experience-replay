@@ -1,5 +1,6 @@
-python train.py \
---n-epochs 10 --n-cycles 2 --n-batches 1 --buffer-size 1000 --batch-size 32 \
---env-name 'PandaTowerBimanualNumBlocks-v2' \
---curriculum --curriculum-init 1 --curriculum-end 3 --curriculum-step 1 --curriculum-bar '-0.1' \
---use-renn
+mpirun --allow-run-as-root -np 16 python train.py \
+--multi-agent --num-agents 5 --dim 2 \
+--env-name formation_hd_env \
+--max-trail-time 10 --trail-mode any \
+--wandb --project Formation \
+--name hd5_ma

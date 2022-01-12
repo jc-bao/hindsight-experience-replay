@@ -46,7 +46,8 @@ def get_env_params(env):
             'robot_obs_size': robot_obs_size,
             'ignore_goal_size': ignore_goal_size,
             'goal_size': goal_size,
-            'num_agents': num_agents
+            'num_agents': num_agents, 
+            'dim': args.dim
             }
     return params
 

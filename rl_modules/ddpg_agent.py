@@ -181,7 +181,7 @@ class ddpg_agent:
                             obs = obs_new
                             ag = ag_new
                         # check if use this rollout
-                        if_moved = np.linalg.norm(ag.reshape(-1,3) - ag_origin.reshape(-1,3), axis=-1) > 0.005
+                        if_moved = np.linalg.norm(ag.reshape(-1,self.args.dim) - ag_origin.reshape(-1,self.args.dim), axis=-1) > 0.005
                         if self.args.trail_mode == 'all':
                             if_moved = if_moved.all()
                         elif self.args.trail_mode == 'any':

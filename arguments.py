@@ -64,6 +64,7 @@ def get_args():
     # multi-agent
     parser.add_argument('--multi-agent', action='store_true')
     parser.add_argument('--num-agents', type = int, default = 3)
+    parser.add_argument('--dim', type = int, default = 3)
     args = parser.parse_args()
 
     return args
