@@ -61,6 +61,7 @@ def get_args():
     parser.add_argument('--note', type = str, default = '')
     # ReNN
     parser.add_argument('--use-renn', action='store_true')
+    parser.add_argument('--use-attn', action='store_true')
     # multi-agent
     parser.add_argument('--actor-shared', action='store_true')
     parser.add_argument('--actor-separated', action='store_true')

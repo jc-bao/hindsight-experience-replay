@@ -32,6 +32,7 @@ class AttentiveGraphToGraph(nn.Module):
     Uses attention to perform message passing between 1-hop neighbors in a fully-connected graph
     Change log
     1. remove mask
+    2. remove layer norm
     """
     def __init__(self, embedding_dim=64, num_heads=1, layer_norm=True):
         super().__init__()
