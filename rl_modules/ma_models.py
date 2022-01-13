@@ -35,7 +35,7 @@ class actor_shared(nn.Module):
 
 class actor_separated(nn.Module):
     def __init__(self, env_params):
-        super(actor_shared, self).__init__()
+        super(actor_separated, self).__init__()
         self.max_action = env_params['action_max']
         self.num_agents = env_params['num_agents']
         self.partial_obs_size = int(env_params['obs']/self.num_agents)
@@ -50,7 +50,7 @@ class actor_separated(nn.Module):
                 nn.Linear(64, 64),
                 nn.ReLU(),
                 nn.Linear(64, self.partial_action_size),
-                self.max_action*nn.Tanh()
+                nn.Tanh()
             )] * self.num_agents)
 
     def forward(self, x):
@@ -59,6 +59,6 @@ class actor_separated(nn.Module):
         goal = x[..., -self.goal_size:].repeat(1, self.num_agents).reshape(batch_size, self.num_agents, self.goal_size)
         x = torch.cat((all_obs, goal), dim = -1)
         act = torch.Tensor()
-        for i in self.num_agents:
-            act = torch.cat((act, self.module_list[i](x[:, i, :])), dim = 1)
+        for i, module in enumerate(self.module_list):
+            act = torch.cat((act, self.max_action*module(x[:, i, :])), dim = 1)
         return act.reshape(batch_size, self.num_agents*self.partial_action_size)
