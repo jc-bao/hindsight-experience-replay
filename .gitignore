@@ -114,8 +114,4 @@ saved_model/
 
 *.log
 
-<<<<<<< HEAD
-/wandb
-=======
 wandb/
->>>>>>> f838d58cc44ecc1b16163629aee77b5bda921e5b
