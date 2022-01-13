@@ -74,7 +74,8 @@ class ddpg_agent:
             except:
                 print('fail to load the model!')
             print('loaded done!')
-            self.actor_network.load_state_dict(actor_model)
+            if not self.args.not_resume_actor:
+                self.actor_network.load_state_dict(actor_model)
             self.critic_network.load_state_dict(critic_model)
         # sync the networks across the cpus
         sync_networks(self.actor_network)

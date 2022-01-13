@@ -37,6 +37,7 @@ def get_args():
     parser.add_argument('--curriculum', action='store_true', help='if use curriculum to train')
     parser.add_argument('--curriculum-reward', action='store_true', help='if use reward as curriculum bar')
     parser.add_argument('--resume', action='store_true', help='if resume old model')
+    parser.add_argument('--not-resume-actor', action='store_true', help='if resume actor model')
     parser.add_argument('--curriculum-bar', default=0.5, type = float)
     parser.add_argument('--curriculum-init', default=0, type = float)
     parser.add_argument('--curriculum-end', default=1, type = float)
