@@ -8,7 +8,7 @@ from mpi_utils.mpi_utils import sync_networks, sync_grads
 from rl_modules.replay_buffer import replay_buffer
 from rl_modules.models import actor, actor_bilinear, critic, critic_bilinear, critic_sum
 from rl_modules.renn_models import actor_ReNN, critic_ReNN
-from rl_modules.ma_models import actor_ma
+from rl_modules.ma_models import actor_shared, actor_separated
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
 import wandb
@@ -27,9 +27,12 @@ class ddpg_agent:
         self.comm = MPI.COMM_WORLD
         self.nprocs = self.comm.Get_size()
         # create the network and target network
-        if args.multi_agent:
-            self.actor_network = actor_ma(env_params)
-            self.actor_target_network = actor_ma(env_params)
+        if args.actor_shared:
+            self.actor_network = actor_shared(env_params)
+            self.actor_target_network = actor_shared(env_params)
+        elif args.actor_separated:
+            self.actor_network = actor_separated(env_params)
+            self.actor_target_network = actor_separated(env_params)
         elif args.use_renn:
             self.actor_network = actor_ReNN(env_params)
             self.actor_target_network = actor_ReNN(env_params)

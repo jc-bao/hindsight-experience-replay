@@ -8,9 +8,9 @@ Multi-agent Modules
 """
 
 # define the actor network
-class actor_ma(nn.Module):
+class actor_shared(nn.Module):
     def __init__(self, env_params):
-        super(actor_ma, self).__init__()
+        super(actor_shared, self).__init__()
         self.max_action = env_params['action_max']
         self.num_agents = env_params['num_agents']
         self.partial_obs_size = int(env_params['obs']/self.num_agents)
@@ -32,3 +32,33 @@ class actor_ma(nn.Module):
         actions = self.max_action * torch.tanh(self.action_out(x))
 
         return actions.reshape(batch_size, self.num_agents*self.partial_action_size)
+
+class actor_separated(nn.Module):
+    def __init__(self, env_params):
+        super(actor_shared, self).__init__()
+        self.max_action = env_params['action_max']
+        self.num_agents = env_params['num_agents']
+        self.partial_obs_size = int(env_params['obs']/self.num_agents)
+        self.partial_action_size = int(env_params['action']/self.num_agents)
+        self.goal_size = env_params['goal']
+        self.module_list = nn.ModuleList(
+            [nn.Sequential(
+                nn.Linear(self.partial_obs_size + self.goal_size, 64), 
+                nn.ReLU(),
+                nn.Linear(64, 64),
+                nn.ReLU(),
+                nn.Linear(64, 64),
+                nn.ReLU(),
+                nn.Linear(64, self.partial_action_size),
+                self.max_action*nn.Tanh()
+            )] * self.num_agents)
+
+    def forward(self, x):
+        batch_size, obs_size = x.shape
+        all_obs = x[..., :-self.goal_size].reshape(batch_size, self.num_agents, self.partial_obs_size)
+        goal = x[..., -self.goal_size:].repeat(1, self.num_agents).reshape(batch_size, self.num_agents, self.goal_size)
+        x = torch.cat((all_obs, goal), dim = -1)
+        act = torch.Tensor()
+        for i in self.num_agents:
+            act = torch.cat((act, self.module_list[i](x[:, i, :])), dim = 1)
+        return act.reshape(batch_size, self.num_agents*self.partial_action_size)
