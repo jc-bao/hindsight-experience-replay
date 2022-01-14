@@ -63,6 +63,10 @@ class ddpg_agent:
             self.actor_target_network = actor(env_params)
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
+            if self.args.learn_from_central:
+                self.new_actor_loss  = []
+                self.new_actor_network = actor_shared(env_params)
+                self.new_actor_optim = torch.optim.Adam(self.new_actor_network.parameters(), lr=self.args.lr_actor)
         # load paramters
         if args.resume:
             if self.args.model_path == None:
@@ -220,7 +224,10 @@ class ddpg_agent:
                     update_times = self.args.n_batches
                 for _ in range(update_times):
                     # train the network
-                    self._update_network()
+                    if self.args.learn_from_central:
+                        self._update_new_actor()
+                    else:
+                        self._update_network()
                 # soft update
                 self._soft_update_target_network(self.actor_target_network, self.actor_network)
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
@@ -248,6 +255,8 @@ class ddpg_agent:
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
                 torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + '/model.pt')
+                if self.args.learn_from_central:
+                    torch.save(self.new_actor_network, self.model_path + '/new_actor.pt')
                 if self.args.wandb:
                     # log data
                     wandb.log(
@@ -375,10 +384,11 @@ class ddpg_agent:
         actor_loss = -self.critic_network(inputs_norm_tensor, actions_real).mean()
         actor_loss += self.args.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
         # start to update the network
-        self.actor_optim.zero_grad()
-        actor_loss.backward()
-        sync_grads(self.actor_network)
-        self.actor_optim.step()
+        for _ in range(self.args.actor_update_times):
+            self.actor_optim.zero_grad()
+            actor_loss.backward()
+            sync_grads(self.actor_network)
+            self.actor_optim.step()
         # update the critic_network
         self.critic_optim.zero_grad()
         critic_loss.backward()
@@ -386,7 +396,7 @@ class ddpg_agent:
         self.critic_optim.step()
 
     # do the evaluation
-    def _eval_agent(self, render = False):
+    def _eval_agent(self, render = False, eval_new_actor = False):
         total_success_rate = []
         total_reward = []
         # record video
@@ -401,7 +411,10 @@ class ddpg_agent:
             for _ in range(self.env_params['max_timesteps']):
                 with torch.no_grad():
                     input_tensor = self._preproc_inputs(obs, g)
-                    pi = self.actor_network(input_tensor)
+                    if self.args.learn_from_central and eval_new_actor:
+                        pi = self.new_actor_network(input_tensor)
+                    else:
+                        pi = self.actor_network(input_tensor)
                     # convert the actions
                     actions = pi.detach().cpu().numpy().squeeze()
                 observation_new, reward, _, info = self.env.step(actions)
@@ -428,7 +441,7 @@ class ddpg_agent:
             'reward': global_reward / MPI.COMM_WORLD.Get_size(),
         }
     
-    def warmup(self, num_rollout):
+    def warmup(self, num_rollout, policy = 'random', store = True):
         mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
         for _ in range(num_rollout):
             ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
@@ -438,7 +451,13 @@ class ddpg_agent:
             ag = observation['achieved_goal']
             g = observation['desired_goal']
             for t in range(self.env_params['max_timesteps']):
-                action = self.env.action_space.sample()
+                if policy == 'random':
+                    action = self.env.action_space.sample()
+                else:
+                    with torch.no_grad():
+                        input_tensor = self._preproc_inputs(obs, g)
+                        pi = self.actor_network(input_tensor)
+                        action = self._select_actions(pi)
                 # feed the actions into the environment
                 observation_new, _, _, info = self.env.step(action)
                 obs_new = observation_new['observation']
@@ -451,8 +470,9 @@ class ddpg_agent:
                 # re-assign the observation
                 obs = obs_new
                 ag = ag_new
-            ep_obs.append(obs.copy())
-            ep_ag.append(ag.copy())
+            if store: # record final obs if store
+                ep_obs.append(obs.copy())
+                ep_ag.append(ag.copy())
             mb_obs.append(ep_obs)
             mb_ag.append(ep_ag)
             mb_g.append(ep_g)
@@ -463,5 +483,51 @@ class ddpg_agent:
         mb_g = np.array(mb_g)
         mb_actions = np.array(mb_actions)
         # store the episodes
-        self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
-        self._update_normalizer([mb_obs, mb_ag, mb_g , mb_actions])
+        if store:
+            self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
+            self._update_normalizer([mb_obs, mb_ag, mb_g , mb_actions])
+        else:
+            obs_norm = self.o_norm.normalize(mb_obs)
+            g_norm = self.g_norm.normalize(mb_g)
+            inputs_norm = np.concatenate([obs_norm, g_norm], axis=-1)
+            assert inputs_norm.shape == (num_rollout, self.env_params['max_timesteps'],self.env_params['obs']+self.env_params['goal']), inputs_norm.shape
+            obs_tensor = torch.tensor(inputs_norm, dtype=torch.float32).cuda()\
+                .reshape(num_rollout*self.env_params['max_timesteps'], self.env_params['goal']+self.env_params['obs'])
+            act_tensor = torch.tensor(mb_actions, dtype=torch.float32).cuda()\
+                .reshape(num_rollout*self.env_params['max_timesteps'], self.env_params['action'])
+            return obs_tensor, act_tensor
+
+    def _update_new_actor(self):
+        # evaluate old policy
+        data = self._eval_agent()
+        assert data['success_rate'] > 0.9, 'success rate:'+data['success_rate']+' is too low!'
+        # use supervised learning to update new policy
+        self.actor_network.eval() # fix old actor
+        self.new_actor_network.cuda()
+        # collect enough data to train new policy
+        for _ in tqdm(range(10)):
+            obs_tensor, act_tensor = self.warmup(10000, policy = 'old_policy', store = False)
+            num_epoch = 20
+            num_batch = 100
+            data_size = obs_tensor.shape(0)
+            batch_size = int(data_size/num_batch)
+            success_rate = 0
+            for epoch in range(num_epoch):
+                for i in range(num_batch):
+                    self.new_actor_optim.zero_grad()
+                    actions_new = self.new_actor_network(obs_tensor[batch_size*i:batch_size*(i+1)])
+                    new_actor_loss = (actions_new - act_tensor[batch_size*i:batch_size*(i+1)]).pow(2).mean()
+                    new_actor_loss.backward()
+                    self.new_actor_optim.step()
+                data = self._eval_agent(eval_new_actor=True)
+                print('epoch:', epoch, ' success rate: ', data['success_rate'])
+                if data['success_rate'] > 0 and (data['success_rate'] - success_rate)<0.0001:
+                    break
+                success_rate = data['success_rate']
+        #     if self.args.wandb and MPI.COMM_WORLD.Get_rank() == 0:
+        #         self.new_actor_loss.append(new_actor_loss.detach().cpu())
+        #         if len(self.new_actor_loss) == 2000:
+        #             wandb.log({"actor loss": np.mean(self.new_actor_loss)})
+        #             self.new_actor_loss = []
+        # self.actor_network.train()
+        exit()
