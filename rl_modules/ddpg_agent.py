@@ -384,11 +384,10 @@ class ddpg_agent:
         actor_loss = -self.critic_network(inputs_norm_tensor, actions_real).mean()
         actor_loss += self.args.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
         # start to update the network
-        for _ in range(self.args.actor_update_times):
-            self.actor_optim.zero_grad()
-            actor_loss.backward()
-            sync_grads(self.actor_network)
-            self.actor_optim.step()
+        self.actor_optim.zero_grad()
+        actor_loss.backward()
+        sync_grads(self.actor_network)
+        self.actor_optim.step()
         # update the critic_network
         self.critic_optim.zero_grad()
         critic_loss.backward()
