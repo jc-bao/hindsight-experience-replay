@@ -378,11 +378,13 @@ class ddpg_agent:
             critic_loss = (target_q_value - real_q_value).pow(2).mean()
             # the actor loss
             actions_real = self.actor_network(inputs_norm_tensor)
-            actions_expert = self.expert_network(inputs_norm_tensor)
             q_loss = -self.critic_network(inputs_norm_tensor, actions_real).mean()
-            imitate_loss = (actions_real - actions_expert).pow(2).mean()
-            actor_loss = self.args.q_coef * q_loss + self.args.imitate_coef * imitate_loss
+            actor_loss = self.args.q_coef * q_loss
             actor_loss += self.args.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
+            if self.args.learn_from_expert:
+                actions_expert = self.expert_network(inputs_norm_tensor)
+                imitate_loss = (actions_real - actions_expert).pow(2).mean()
+                actor_loss += self.args.imitate_coef * imitate_loss
             # start to update the network
             self.actor_optim.zero_grad()
             actor_loss.backward()
