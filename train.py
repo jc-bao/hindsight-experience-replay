@@ -43,7 +43,8 @@ def get_env_params(env):
             'ignore_goal_size': 0,
             'goal_size': goal_size,
             'num_agents': num_agents, 
-            'dim': args.dim
+            'dim': args.dim, 
+            'drop_out_rate': args.drop_out_rate
             }
     return params
 
