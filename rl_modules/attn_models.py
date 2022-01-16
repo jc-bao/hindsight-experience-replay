@@ -77,6 +77,39 @@ class SelfAttentionExtractor(nn.Module):
             features = self.layer_norm2[i](ffn_out)
         features = torch.mean(features, dim=1)
         return features
+class AttentionExtractor(nn.Module):
+    def __init__(self, robot_dim, object_dim, hidden_size, n_attention_blocks, n_heads):
+        super(AttentionExtractor, self).__init__()
+        self.embed = nn.Sequential(
+            nn.Linear(robot_dim + object_dim, hidden_size), nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size), nn.LayerNorm(hidden_size),
+        )
+        self.n_attention_blocks = n_attention_blocks
+        self.attention_blocks = nn.ModuleList(
+            [SelfAttentionBase(hidden_size, hidden_size, n_heads) for _ in range(n_attention_blocks)]
+        )
+        self.layer_norm1 = nn.ModuleList(
+            [nn.LayerNorm(hidden_size) for _ in range(n_attention_blocks)])
+        self.feed_forward_network = nn.ModuleList(
+            [nn.ModuleList([nn.Linear(hidden_size, hidden_size),
+                            nn.Linear(hidden_size, hidden_size)]) for _ in range(n_attention_blocks)])
+        self.feed_forward_network = nn.ModuleList(
+            nn.Sequential(
+                nn.Linear(hidden_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, hidden_size)
+            ) for _ in range(n_attention_blocks)
+        )
+        self.layer_norm2 = nn.ModuleList(
+            [nn.LayerNorm(hidden_size) for _ in range(n_attention_blocks)])   
+    
+    def forward(self, x):
+        features = self.embed(x)
+        for i in range(self.n_attention_blocks):
+            attn_output = self.attention_blocks[i](features, features, features, mask = None)
+            out1 = self.layer_norm1[i](features + attn_output)
+            ffn_out = self.feed_forward_network[i](out1)
+            features = self.layer_norm2[i](ffn_out)
+        features = torch.mean(features, dim=1)
+        return features
 
 class actor_attn(nn.Module):
     def __init__(self, env_params):
