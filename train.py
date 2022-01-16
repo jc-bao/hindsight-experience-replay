@@ -59,7 +59,7 @@ def launch(args):
     # env = gym.make('XarmHandover-v0', config = config)
     if 'formation' in args.env_name:
         import formation_gym
-        env = formation_gym.make_env(args.env_name, benchmark=False, num_agents = args.num_agents)
+        env = formation_gym.make_env(args.env_name, benchmark=False, num_agents = args.num_agents, reward_type=args.reward_type)
     else:
         env = gym.make(args.env_name)
     # set random seeds for reproduce

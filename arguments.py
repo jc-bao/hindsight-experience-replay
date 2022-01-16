@@ -63,6 +63,7 @@ def get_args():
     parser.add_argument('--use-renn', action='store_true')
     parser.add_argument('--use-attn', action='store_true')
     # multi-agent
+    parser.add_argument('--reward-type', type = str, default = 'sparse')
     parser.add_argument('--learn-from-expert', action='store_true')
     parser.add_argument('--collect-from-expert', action='store_true')
     parser.add_argument('--fix-critic', action='store_true')
