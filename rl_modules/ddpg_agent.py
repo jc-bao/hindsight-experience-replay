@@ -9,7 +9,7 @@ from rl_modules.replay_buffer import replay_buffer
 from rl_modules.models import actor, actor_bilinear, critic, critic_bilinear, critic_sum
 from rl_modules.renn_models import actor_ReNN, critic_ReNN
 from rl_modules.attn_models import actor_attn, critic_attn
-from rl_modules.ma_models import actor_shared, actor_separated
+from rl_modules.ma_models import actor_shared, actor_separated, actor_dropout
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
 import wandb
@@ -36,6 +36,11 @@ class ddpg_agent:
         elif args.actor_separated:
             self.actor_network = actor_separated(env_params)
             self.actor_target_network = actor_separated(env_params)
+            self.critic_network = critic(env_params)
+            self.critic_target_network = critic(env_params)
+        elif args.actor_dropout:
+            self.actor_network = actor_dropout(env_params)
+            self.actor_target_network = actor_dropout(env_params)
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
         elif args.use_renn:
@@ -77,6 +82,7 @@ class ddpg_agent:
                 o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             except:
                 print('fail to load the model!')
+                exit()
             print('loaded done!')
             if self.args.learn_from_expert:
                 self.expert_network.load_state_dict(actor_model)
