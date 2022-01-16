@@ -73,6 +73,7 @@ def get_args():
     parser.add_argument('--actor-shared', action='store_true')
     parser.add_argument('--actor-separated', action='store_true')
     parser.add_argument('--actor-dropout', action='store_true')
+    parser.add_argument('--actor-large', action='store_true')
     parser.add_argument('--drop-out-rate', type = float, default = 0.5)
     parser.add_argument('--num-agents', type = int, default = 3)
     parser.add_argument('--dim', type = int, default = 3)

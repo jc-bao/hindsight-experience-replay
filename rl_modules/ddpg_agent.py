@@ -6,7 +6,8 @@ import numpy as np
 from mpi4py import MPI
 from mpi_utils.mpi_utils import sync_networks, sync_grads
 from rl_modules.replay_buffer import replay_buffer
-from rl_modules.models import actor, actor_bilinear, critic, critic_bilinear, critic_sum
+from rl_modules.models import actor, actor_bilinear, critic, critic_bilinear, critic_sum,\
+    actor_large, critic_large
 from rl_modules.renn_models import actor_ReNN, critic_ReNN
 from rl_modules.attn_models import actor_attn, critic_attn
 from rl_modules.biattn_models import critic_biattn, actor_biattn
@@ -69,6 +70,11 @@ class ddpg_agent:
             self.actor_target_network = actor_biattn(env_params)
             self.critic_network = critic_biattn(env_params)
             self.critic_target_network = critic_biattn(env_params)
+        elif args.actor_large:
+            self.actor_network = actor_large(env_params)
+            self.actor_target_network = actor_large(env_params)
+            self.critic_network = critic_large(env_params)
+            self.critic_target_network = critic_large(env_params)
         else:
             self.actor_network = actor(env_params)
             self.actor_target_network = actor(env_params)
