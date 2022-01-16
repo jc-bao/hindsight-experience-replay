@@ -63,6 +63,7 @@ def get_args():
     parser.add_argument('--use-renn', action='store_true')
     parser.add_argument('--use-attn', action='store_true')
     # multi-agent
+    parser.add_argument('--reward-type', type = str, default = 'sparse')
     parser.add_argument('--learn-from-expert', action='store_true')
     parser.add_argument('--collect-from-expert', action='store_true')
     parser.add_argument('--fix-critic', action='store_true')
@@ -71,6 +72,7 @@ def get_args():
     parser.add_argument('--actor-shared', action='store_true')
     parser.add_argument('--actor-separated', action='store_true')
     parser.add_argument('--actor-dropout', action='store_true')
+    parser.add_argument('--drop-out-rate', type = float, default = 0.5)
     parser.add_argument('--num-agents', type = int, default = 3)
     parser.add_argument('--dim', type = int, default = 3)
     args = parser.parse_args()

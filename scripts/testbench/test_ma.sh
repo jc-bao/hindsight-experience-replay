@@ -3,4 +3,4 @@ python ../../train.py \
 --actor-dropout \
 --num-agents 4 --dim 2 \
 --env-name 'formation_hd_env' \
---resume --model-path '/Users/reedpan/Downloads/model.pt'
+--resume --model-path '/rl/hindsight-experience-replay/saved_models/formation_hd_env/hd4_dropout_resume/model.pt'

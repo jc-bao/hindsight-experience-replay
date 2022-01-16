@@ -72,7 +72,7 @@ class actor_dropout(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 256)
         self.action_out = nn.Linear(256, env_params['action'])
-        self.drop_out_rate = 0.5
+        self.drop_out_rate = env_params['drop_out_rate']
         self.num_agents = env_params['num_agents']
         self.partial_obs_size = int(env_params['obs']/self.num_agents)
         self.partial_action_size = int(env_params['action']/self.num_agents)
