@@ -28,7 +28,7 @@ class critic_biattn(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 64)
         )
-        self.attn = nn.MultiheadAttention(embed_dim = 64, num_heads=1, batch_first=True)
+        self.attn = nn.MultiheadAttention(embed_dim = 64, num_heads=1)
         self.phi_out = nn.Sequential(
             nn.Linear(64, 64), 
             nn.ReLU(),
@@ -45,6 +45,7 @@ class critic_biattn(nn.Module):
         # phi(o,g)
         phi_in = self.phi_in(og)
         attn, _ = self.attn(f_in, phi_in, phi_in)
+        torch.movedim(attn, 0, 1)
         phi_out = self.phi_out(attn)
         # dot product
         q_value = torch.einsum('bs,bs->b', f_out.squeeze(), phi_out.squeeze())
@@ -95,7 +96,7 @@ class actor_biattn(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 64)
         )
-        self.attn = nn.MultiheadAttention(embed_dim = 64, num_heads=1, batch_first=True)
+        self.attn = nn.MultiheadAttention(embed_dim = 64, num_heads=1)
         self.phi_out = nn.Sequential(
             nn.Linear(64, 64),
             nn.ReLU(),
@@ -117,6 +118,7 @@ class actor_biattn(nn.Module):
         # phi(o,g)
         phi_in = self.phi_in(og)
         attn, _ = self.attn(f_in, phi_in, phi_in)
+        torch.movedim(attn, 0, 1)
         phi_out = self.phi_out(attn)
         # mlp
         features = torch.cat((f_in, phi_out), dim=-1)
