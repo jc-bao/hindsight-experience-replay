@@ -10,14 +10,17 @@ Multi-agent Modules
 
 # define the actor network
 class actor_shared(nn.Module):
-    def __init__(self, env_params):
+    def __init__(self, env_params, identification = False):
         super(actor_shared, self).__init__()
+        self.identification = identification
         self.max_action = env_params['action_max']
         self.num_agents = env_params['num_agents']
         self.partial_obs_size = int(env_params['obs']/self.num_agents)
         self.partial_action_size = int(env_params['action']/self.num_agents)
         self.goal_size = env_params['goal']
-        self.fc1 = nn.Linear(self.partial_obs_size + env_params['goal'], 256)
+        input_size = self.partial_obs_size + env_params['goal']
+        if self.identification: input_size+=1
+        self.fc1 = nn.Linear(input_size, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 256)
         self.action_out = nn.Linear(256, self.partial_action_size)
@@ -27,6 +30,9 @@ class actor_shared(nn.Module):
         all_obs = x[..., :-self.goal_size].reshape(batch_size, self.num_agents, self.partial_obs_size)
         goal = x[..., -self.goal_size:].repeat(1, self.num_agents).reshape(batch_size, self.num_agents, self.goal_size)
         x = torch.cat((all_obs, goal), dim = -1)
+        if self.identification:
+            i = torch.arange(-1, 1, 2/self.num_agents).view(1, self.num_agents, 1).repeat(batch_size, 1, 1)
+            x = torch.cat((i, x), dim = -1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
