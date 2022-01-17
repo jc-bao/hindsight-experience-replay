@@ -97,6 +97,7 @@ class ddpg_agent:
                 path = self.args.model_path
             try:
                 o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+                # OLD Version o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             except:
                 print('fail to load the model!')
                 exit()
@@ -132,6 +133,10 @@ class ddpg_agent:
             # Note: if use object number curriculum, the normalizer need to be extended
             self.o_norm.load(o_dict)
             self.g_norm.load(g_dict)
+            # OLD VERSION self.o_norm.mean = o_mean
+            # self.o_norm.std = o_std
+            # self.g_norm.mean = g_mean
+            # self.g_norm.std = g_std
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             # if not os.path.exists(self.args.save_dir):
@@ -444,6 +449,7 @@ class ddpg_agent:
                     # convert the actions
                     actions = pi.detach().cpu().numpy().squeeze()
                 observation_new, reward, _, info = self.env.step(actions)
+                # self.env.render()
                 obs = observation_new['observation']
                 g = observation_new['desired_goal']
                 per_success_rate.append(info['is_success'])
