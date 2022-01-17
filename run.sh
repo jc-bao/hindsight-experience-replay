@@ -1,4 +1,6 @@
-python train.py \
---env-name 'formation_hd_env' \
---num-agents 8 --dim 2 \
---resume --model-path '/Users/reedpan/Downloads/hd8_central.pt'  \
+tmux rename-window hd32_central
+export OMPI_MCA_btl_vader_single_copy_mechanism=none
+mpirun --allow-run-as-root -np 64 python train.py \
+--n-epoch 200 \
+--env-name formation_hd_env --num-agents 32 --dim 2 \
+--wandb --project Formation --name hd32_central

@@ -44,13 +44,13 @@ class actor_separated(nn.Module):
         self.goal_size = env_params['goal']
         self.module_list = nn.ModuleList(
             [nn.Sequential(
-                nn.Linear(self.partial_obs_size + self.goal_size, 64), 
+                nn.Linear(self.partial_obs_size + self.goal_size, 128), 
                 nn.ReLU(),
-                nn.Linear(64, 64),
+                nn.Linear(128, 128),
                 nn.ReLU(),
-                nn.Linear(64, 64),
+                nn.Linear(128, 128),
                 nn.ReLU(),
-                nn.Linear(64, self.partial_action_size),
+                nn.Linear(128, self.partial_action_size),
                 nn.Tanh()
             )] * self.num_agents)
 
