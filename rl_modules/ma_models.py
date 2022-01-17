@@ -10,7 +10,8 @@ Multi-agent Modules
 
 # define the actor network
 class actor_shared(nn.Module):
-    def __init__(self, env_params, identification = False):
+    def __init__(self, env_params, identification = True):
+        # Note: id for agent is important
         super(actor_shared, self).__init__()
         self.identification = identification
         self.max_action = env_params['action_max']
