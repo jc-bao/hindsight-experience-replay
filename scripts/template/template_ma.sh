@@ -1,4 +1,4 @@
-mpirun --allow-run-as-root -np 16 \
+mpirun --allow-run-as-root -np 16 z\
 python ../../train.py \
 --env-name 'formation_hd_env' \
 --actor-separated \
