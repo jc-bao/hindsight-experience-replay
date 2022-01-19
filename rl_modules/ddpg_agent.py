@@ -71,8 +71,8 @@ class ddpg_agent:
             self.critic_network = critic_attn(env_params)
             self.critic_target_network = critic_attn(env_params)
         elif args.use_biattn:
-            self.actor_network = actor_biattn(env_params)
-            self.actor_target_network = actor_biattn(env_params)
+            self.actor_network = actor_attn(env_params)
+            self.actor_target_network = actor_attn(env_params)
             self.critic_network = critic_biattn(env_params)
             self.critic_target_network = critic_biattn(env_params)
         elif args.actor_large:

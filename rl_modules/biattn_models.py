@@ -50,7 +50,6 @@ class critic_biattn(nn.Module):
         phi_out = self.phi_out(attn)
         # dot product
         q_value = torch.einsum('bs,bs->b', f_out.squeeze(), phi_out.squeeze())
-        print(q_value)
         return q_value
 
     def preprocess(self, x, act):
@@ -149,12 +148,11 @@ class actor_biattn(nn.Module):
         return og, r
 
     def _initialize(self):
-        return
-        # for net in zip(self.f_in, self.phi_in, self.phi_out):
-        #     if isinstance(net, nn.Linear):
-        #         nn.init.orthogonal_(net.weight, gain=np.sqrt(2))
-        #         nn.init.constant_(net.bias, 0.)
-        # for net in self.mlp:
-        #     if isinstance(net, nn.Linear):
-        #         nn.init.orthogonal_(net.weight, gain=0.01)
-        #         nn.init.constant_(net.bias, 0.)
+        for net in zip(self.f_in, self.phi_in, self.phi_out):
+            if isinstance(net, nn.Linear):
+                nn.init.orthogonal_(net.weight, gain=np.sqrt(2))
+                nn.init.constant_(net.bias, 0.)
+        for net in self.mlp:
+            if isinstance(net, nn.Linear):
+                nn.init.orthogonal_(net.weight, gain=0.01)
+                nn.init.constant_(net.bias, 0.)
