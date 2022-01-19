@@ -44,8 +44,9 @@ class critic_biattn(nn.Module):
         f_out = self.f_out(f_in)
         # phi(o,g)
         phi_in = self.phi_in(og)
-        attn, _ = self.attn(f_in, phi_in, phi_in)
-        torch.movedim(attn, 0, 1)
+        attn, _ = self.attn(torch.movedim(f_in, 0, 1), \
+            torch.movedim(phi_in, 0, 1), torch.movedim(phi_in, 0, 1))
+        attn = torch.movedim(attn, 0, 1)
         phi_out = self.phi_out(attn)
         # dot product
         q_value = torch.einsum('bs,bs->b', f_out.squeeze(), phi_out.squeeze())
@@ -117,8 +118,9 @@ class actor_biattn(nn.Module):
         f_in = self.f_in(r)
         # phi(o,g)
         phi_in = self.phi_in(og)
-        attn, _ = self.attn(f_in, phi_in, phi_in)
-        torch.movedim(attn, 0, 1)
+        attn, _ = self.attn(torch.movedim(f_in, 0, 1), \
+            torch.movedim(phi_in, 0, 1), torch.movedim(phi_in, 0, 1))
+        attn = torch.movedim(attn, 0, 1)
         phi_out = self.phi_out(attn)
         # mlp
         features = torch.cat((f_in, phi_out), dim=-1)
