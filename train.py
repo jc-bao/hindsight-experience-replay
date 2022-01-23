@@ -32,7 +32,7 @@ def get_env_params(env):
     try:
         num_agents = env.num_agents 
     except:
-        num_agents = 1
+        num_agents = 2
     params = {'obs': obs['observation'].shape[0],
             'goal': obs['desired_goal'].shape[0],
             'action': env.action_space.shape[0],

@@ -11,7 +11,8 @@ from rl_modules.models import actor, actor_bilinear, critic, critic_bilinear, cr
 from rl_modules.renn_models import actor_ReNN, critic_ReNN
 from rl_modules.attn_models import actor_attn, critic_attn
 from rl_modules.biattn_models import critic_biattn, actor_biattn
-from rl_modules.ma_models import actor_shared, actor_separated, actor_dropout, actor_multihead
+from rl_modules.ma_models import actor_shared, actor_separated, actor_dropout, actor_multihead,\
+    actor_master_slave
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
 import wandb
@@ -38,6 +39,11 @@ class ddpg_agent:
         elif args.actor_separated:
             self.actor_network = actor_separated(env_params)
             self.actor_target_network = actor_separated(env_params)
+            self.critic_network = critic(env_params)
+            self.critic_target_network = critic(env_params)
+        elif args.actor_master_slave:
+            self.actor_network = actor_master_slave(env_params)
+            self.actor_target_network = actor_master_slave(env_params)
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
         elif args.actor_dropout:

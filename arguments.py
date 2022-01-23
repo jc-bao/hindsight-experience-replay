@@ -71,6 +71,7 @@ def get_args():
     parser.add_argument('--q-coef', type=float, default=1.0)
     parser.add_argument('--imitate-coef', type=float, default=0)
     parser.add_argument('--actor-shared', action='store_true')
+    parser.add_argument('--actor-master-slave', action='store_true')
     parser.add_argument('--actor-separated', action='store_true')
     parser.add_argument('--actor-dropout', action='store_true')
     parser.add_argument('--actor-multihead', action='store_true')

@@ -71,6 +71,39 @@ class actor_separated(nn.Module):
             act = torch.cat((act, self.max_action*module(x[:, i, :])), dim = 1)
         return act.reshape(batch_size, self.num_agents*self.partial_action_size)
 
+class actor_master_slave(nn.Module):
+    def __init__(self, env_params):
+        super(actor_master_slave, self).__init__()
+        self.max_action = env_params['action_max']
+        self.num_agents = env_params['num_agents']
+        self.partial_action_size = int(env_params['action']/self.num_agents)
+        self.goal_size = env_params['goal']
+        self.master_module = nn.Sequential(
+            nn.Linear(env_params['obs'] + self.partial_action_size + self.goal_size, 176), 
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, self.partial_action_size),
+            nn.Tanh()
+        )
+        self.slave_module = nn.Sequential(
+            nn.Linear(env_params['obs'] + self.goal_size, 176), 
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, 176),
+            nn.ReLU(),
+            nn.Linear(176, self.partial_action_size),
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+        act_slave = self.slave_module(x)
+        act_master = self.master_module(torch.cat((x, act_slave), dim = -1))
+        return torch.cat((act_slave, act_master), dim = -1)
+
 class actor_dropout(nn.Module):
     def __init__(self, env_params):
         super(actor_dropout, self).__init__()
