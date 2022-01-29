@@ -74,8 +74,8 @@ class ddpg_agent:
         elif args.use_attn:
             self.actor_network = actor_attn(env_params)
             self.actor_target_network = actor_attn(env_params)
-            self.critic_network = critic_attn(env_params, feature_extractor=self.actor_network.feature_extractor)
-            self.critic_target_network = critic_attn(env_params, feature_extractor=self.actor_target_network.feature_extractor)
+            self.critic_network = critic_attn(env_params)
+            self.critic_target_network = critic_attn(env_params)
         elif args.use_biattn:
             self.actor_network = actor_attn(env_params)
             self.actor_target_network = actor_attn(env_params)
@@ -424,11 +424,11 @@ class ddpg_agent:
             self.actor_optim.zero_grad()
             actor_loss.backward()
             sync_grads(self.actor_network)
+            self.actor_optim.step()
             # update the critic_network
             self.critic_optim.zero_grad()
             critic_loss.backward()
             sync_grads(self.critic_network)
-            self.actor_optim.step()
             self.critic_optim.step()
         
 

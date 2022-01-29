@@ -77,7 +77,6 @@ class SelfAttentionExtractor(nn.Module):
             features = self.layer_norm2[i](ffn_out)
         features = torch.mean(features, dim=1)
         return features
-
 class AttentionExtractor(nn.Module):
     def __init__(self, robot_dim, object_dim, hidden_size, n_attention_blocks, n_heads):
         super(AttentionExtractor, self).__init__()
@@ -119,10 +118,10 @@ class actor_attn(nn.Module):
         self.goal_size = env_params['goal_size']
         self.obj_obs_size = env_params['obj_obs_size']
         self.robot_obs_size = env_params['robot_obs_size']
-        self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 64, n_attention_blocks=2, n_heads=1)
+        self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 256, n_attention_blocks=2, n_heads=1)
         self.mlp = nn.Sequential(
-            *([nn.Linear(64, 64), nn.ReLU()] * 3 +
-              [nn.Linear(64, env_params['action']), nn.Tanh()])
+            *([nn.Linear(256, 256), nn.ReLU()] * 2 +
+              [nn.Linear(256, env_params['action']), nn.Tanh()])
         )
         self._initialize()
 
@@ -158,27 +157,27 @@ class actor_attn(nn.Module):
 
 
 class critic_attn(nn.Module):
-    def __init__(self, env_params, feature_extractor = None):
+    def __init__(self, env_params):
         super(critic_attn, self).__init__()
         self.max_action = env_params['action_max']
         self.goal_size = env_params['goal_size']
         self.obj_obs_size = env_params['obj_obs_size']
         self.robot_obs_size = env_params['robot_obs_size']
-        self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 64, n_attention_blocks=2, n_heads=1) if feature_extractor==None else feature_extractor
+        self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size+env_params['action'], self.obj_obs_size+self.goal_size, hidden_size = 256, n_attention_blocks=2, n_heads=1)
         self.mlp = nn.Sequential(
-            *(  [nn.Linear(64+env_params['action'], 64), nn.ReLU()] +
-                [nn.Linear(64, 64), nn.ReLU()] * 2 +
-                [nn.Linear(64, 1)])
+            *([nn.Linear(256, 256), nn.ReLU()] * 2 +
+              [nn.Linear(256, 1)])
         )
         self._initialize()
 
     def forward(self, x, actions):
-        x = self.preprocess(x)
+        # robot_obs, objects_obs, masks = self.parse_obs(obs)
+        x = self.preprocess(x, actions)
         features = self.feature_extractor(x)
-        q_value = self.mlp(torch.cat((features, actions), dim=-1))
+        q_value = self.mlp(features)
         return q_value
 
-    def preprocess(self, x):
+    def preprocess(self, x, act):
         '''
         obs: (batch_size, obs_size)
             obs_size = robot_obs_size + num_obj * object_obs_size + num_obj * goal_size
@@ -188,12 +187,12 @@ class critic_attn(nn.Module):
         assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0
         num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))
         robot_obs = x[:, :self.robot_obs_size].repeat(1,num_obj).reshape(batch_size, num_obj, self.robot_obs_size)
-        # act = act.repeat(1,num_obj).reshape(batch_size, num_obj, -1)
+        act = act.repeat(1,num_obj).reshape(batch_size, num_obj, -1)
         obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
             .reshape(batch_size, num_obj, self.obj_obs_size)
         goal_obs = x[:, self.robot_obs_size+self.obj_obs_size*num_obj:]\
             .reshape(batch_size, num_obj, self.goal_size)
-        return torch.cat((robot_obs, obj_obs, goal_obs), dim=-1)
+        return torch.cat((act, robot_obs, obj_obs, goal_obs), dim=-1)
 
     def _initialize(self):
         for net in self.mlp:
