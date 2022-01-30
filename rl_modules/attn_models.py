@@ -120,9 +120,9 @@ class actor_attn(nn.Module):
         self.robot_obs_size = env_params['robot_obs_size']
         self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 64, n_attention_blocks=2, n_heads=1)
         self.mlp = nn.Sequential(
-            *(  [nn.Linear(64, 256), nn.ReLU()] +
-                [nn.Linear(256, 256), nn.ReLU()] +
-                [nn.Linear(256, env_params['action']), nn.Tanh()])
+            *(  [nn.Linear(64, 64), nn.ReLU()] +
+                [nn.Linear(64, 64), nn.ReLU()] +
+                [nn.Linear(64, env_params['action']), nn.Tanh()])
         )
         self._initialize()
 
@@ -166,9 +166,9 @@ class critic_attn(nn.Module):
         self.robot_obs_size = env_params['robot_obs_size']
         self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size+env_params['action'], self.obj_obs_size+self.goal_size, hidden_size = 64, n_attention_blocks=2, n_heads=1)
         self.mlp = nn.Sequential(
-            *(  [nn.Linear(64, 256), nn.ReLU()] +
-                [nn.Linear(256, 256), nn.ReLU()] +
-                [nn.Linear(256, 1)])
+            *(  [nn.Linear(64, 64), nn.ReLU()] +
+                [nn.Linear(64, 64), nn.ReLU()] +
+                [nn.Linear(64, 1)])
         )
         self._initialize()
 
