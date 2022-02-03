@@ -10,7 +10,7 @@ from rl_modules.models import actor, actor_bilinear, critic, critic_bilinear, cr
     actor_large, critic_large
 from rl_modules.renn_models import actor_ReNN, critic_ReNN
 from rl_modules.attn_models import actor_attn, critic_attn
-from rl_modules.biattn_models import critic_biattn, actor_biattn
+from rl_modules.biattn_models import critic_biattn, actor_biattn, critic_biselfattn, critic_selfattn
 from rl_modules.ma_models import actor_shared, actor_separated, actor_dropout, actor_multihead,\
     actor_master_slave
 from mpi_utils.normalizer import normalizer

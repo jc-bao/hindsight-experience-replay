@@ -77,6 +77,7 @@ class SelfAttentionExtractor(nn.Module):
             features = self.layer_norm2[i](ffn_out)
         features = torch.mean(features, dim=1)
         return features
+        
 class AttentionExtractor(nn.Module):
     def __init__(self, robot_dim, object_dim, hidden_size, n_attention_blocks, n_heads):
         super(AttentionExtractor, self).__init__()

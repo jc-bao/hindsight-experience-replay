@@ -30,7 +30,7 @@ def get_env_params(env):
     except:
         goal_size = 3
     try:
-        num_agents = env.num_agents 
+        num_agents = env.num_agents
     except:
         num_agents = 2
     params = {'obs': obs['observation'].shape[0],
