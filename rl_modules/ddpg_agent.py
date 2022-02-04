@@ -9,8 +9,8 @@ from rl_modules.replay_buffer import replay_buffer
 from rl_modules.models import actor, actor_bilinear, critic, critic_bilinear, critic_sum,\
     actor_large, critic_large
 from rl_modules.renn_models import actor_ReNN, critic_ReNN
-from rl_modules.attn_models import actor_attn, critic_attn
-from rl_modules.biattn_models import critic_biattn, actor_biattn, critic_biselfattn, critic_selfattn
+from rl_modules.attn_models import actor_attn, critic_attn, actor_crossattn, critic_crossattn
+from rl_modules.biattn_models import critic_biattn, actor_biattn, critic_biselfattn
 from rl_modules.ma_models import actor_shared, actor_separated, actor_dropout, actor_multihead,\
     actor_master_slave
 from mpi_utils.normalizer import normalizer
@@ -81,6 +81,11 @@ class ddpg_agent:
             self.actor_target_network = actor_attn(env_params)
             self.critic_network = critic_biattn(env_params)
             self.critic_target_network = critic_biattn(env_params)
+        elif args.use_crossattn:
+            self.actor_network = actor_crossattn(env_params)
+            self.actor_target_network = actor_crossattn(env_params)
+            self.critic_network = critic_crossattn(env_params)
+            self.critic_target_network = critic_crossattn(env_params)
         elif args.actor_large:
             self.actor_network = actor_large(env_params)
             self.actor_target_network = actor_large(env_params)
