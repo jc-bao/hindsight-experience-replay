@@ -127,9 +127,9 @@ class CrossAttentionExtractor(nn.Module):
         )
         self.ln = nn.LayerNorm(hidden_size // 2)
     
-    def forward(self, x):
-        robot_obs = x[:,0 , :self.robot_dim]
-        objects_obs = x[..., self.robot_dim:]
+    def forward(self, robot_obs, objects_obs):
+        # robot_obs = x[:,0 , :self.robot_dim]
+        # objects_obs = x[..., self.robot_dim:]
         robot_embedding = self.robot_embed(robot_obs)  # (batch_size, hidden_size/2)
         objects_embedding = self.object_embed(objects_obs)  # (batch_size, n_obj, hidden_size/2)
         weights = torch.matmul(robot_embedding.unsqueeze(dim=1), objects_embedding.transpose(1, 2)) / np.sqrt(objects_embedding.size()[2])  # (batch_size, 1, n_obj)
@@ -245,24 +245,12 @@ class actor_crossattn(nn.Module):
         self.robot_obs_size = int(env_params['robot_obs_size'])
         assert self.robot_obs_size%2 == 0, f'robot obs {self.robot_obs_size} not %2=0'
         self.single_robot_obs_size = int(self.robot_obs_size/2)
-        self.r_in_1 = nn.Sequential(
-            nn.Linear(self.single_robot_obs_size, 64), nn.ReLU(),
-            nn.Linear(64, 64),
-        )
-        self.r_in_2 = nn.Sequential(
-            nn.Linear(self.single_robot_obs_size, 64), nn.ReLU(),
-            nn.Linear(64, 64),
-        )
-        self.og_in = nn.Sequential(
-            nn.Linear(self.goal_size+self.obj_obs_size, 64), nn.ReLU(),
-            nn.Linear(64, 64),
-        )
-        self.attn_1 = nn.MultiheadAttention(embed_dim = 64, num_heads=1)
-        self.attn_2 = nn.MultiheadAttention(embed_dim = 64, num_heads=1)
+        self.attn_1 = CrossAttentionExtractor(self.single_robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 64)
+        self.attn_2 = CrossAttentionExtractor(self.single_robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 64)
         self.act_out = nn.Sequential(
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, env_params['action'])
+            nn.Linear(128, 128),nn.ReLU(),
+            nn.Linear(128, 128),nn.ReLU(),
+            nn.Linear(128, env_params['action'])
         )
 
     def forward(self, x):
@@ -271,25 +259,16 @@ class actor_crossattn(nn.Module):
         assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0, \
             f'Shape ERROR! obs_size{obs_size}, robot{self.robot_obs_size}, obj&goal{self.obj_obs_size+self.goal_size}'
         num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))
-        robot_obs = x[:, :self.robot_obs_size]
-        # get embeded
-        r_in_1 = self.r_in_1(robot_obs[:, :self.single_robot_obs_size])
-        r_in_2 = self.r_in_2(robot_obs[:, self.single_robot_obs_size:])
-        r_in = torch.cat((r_in_1, r_in_2), dim=-1)
+        robot_obs_1 = x[:, :self.single_robot_obs_size]
+        robot_obs_2 = x[:, self.single_robot_obs_size:self.robot_obs_size]
         obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
             .reshape(batch_size, num_obj, self.obj_obs_size)
         goal_obs = x[:, self.robot_obs_size+self.obj_obs_size*num_obj:]\
             .reshape(batch_size, num_obj, self.goal_size)
-        og = torch.cat((obj_obs, goal_obs), dim=-1)
-        og_in = self.og_in(og)
-        # get attention q:robot k:og_i v:og_i
-        og_attn_1, _ = self.attn_1(r_in_1.reshape(1, batch_size, 64), \
-            torch.movedim(og_in, 0, 1), torch.movedim(og_in, 0, 1))
-        og_attn_2, _ = self.attn_2(r_in_2.reshape(1, batch_size, 64), \
-            torch.movedim(og_in, 0, 1), torch.movedim(og_in, 0, 1))
-        og_attn = torch.movedim(torch.cat((og_attn_1,og_attn_2),dim=-1), 0, 1).reshape(batch_size, 128)
-        # get q
-        act = self.act_out(torch.cat((og_attn, r_in), dim = -1))
+        # get action
+        feature_1 = self.attn_1(robot_obs_1, torch.cat((obj_obs, goal_obs), dim=-1))
+        feature_2 = self.attn_2(robot_obs_2, torch.cat((obj_obs, goal_obs), dim=-1))
+        act = self.act_out(torch.cat((feature_1, feature_2), dim = -1))
         return act
 
 class critic_crossattn(nn.Module):
@@ -305,51 +284,30 @@ class critic_crossattn(nn.Module):
         assert self.action_size%2 == 0, f'action_size {self.action_size} not %2=0'
         self.single_robot_obs_size = int(self.robot_obs_size/2)
         self.single_robot_act_size = int(self.action_size/2)
-        self.ra_in_1 = nn.Sequential(
-            nn.Linear(self.single_robot_obs_size+self.single_robot_act_size, 64), nn.ReLU(),
-            nn.Linear(64, 64),
-        )
-        self.ra_in_2 = nn.Sequential(
-            nn.Linear(self.single_robot_obs_size+self.single_robot_act_size, 64), nn.ReLU(),
-            nn.Linear(64, 64),
-        )
-        self.og_in = nn.Sequential(
-            nn.Linear(self.goal_size+self.obj_obs_size, 64), nn.ReLU(),
-            nn.Linear(64, 64),
-        )
-        self.attn_1 = nn.MultiheadAttention(embed_dim = 64, num_heads=1)
-        self.attn_2 = nn.MultiheadAttention(embed_dim = 64, num_heads=1)
+        self.attn_1 = CrossAttentionExtractor(self.single_robot_obs_size+self.single_robot_act_size, self.obj_obs_size+self.goal_size, hidden_size = 64)
+        self.attn_2 = CrossAttentionExtractor(self.single_robot_obs_size+self.single_robot_act_size, self.obj_obs_size+self.goal_size, hidden_size = 64)
         self.q_out = nn.Sequential(
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, 1)
+            nn.Linear(128, 128),nn.ReLU(),
+            nn.Linear(128, 128),nn.ReLU(),
+            nn.Linear(128, 1)
         )
 
-    def forward(self, x, actions):
+    def forward(self, x, act):
         batch_size, obs_size = x.shape
         # preprocess data
         assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0, \
             f'Shape ERROR! obs_size{obs_size}, robot{self.robot_obs_size}, obj&goal{self.obj_obs_size+self.goal_size}'
         num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))
-        robot_obs = x[:, :self.robot_obs_size]
-        # get embeded
-        ra_1 = torch.cat((robot_obs[:, :self.single_robot_obs_size], actions[:, :self.single_robot_act_size]), dim = -1)
-        ra_in_1 = self.ra_in_1(ra_1)
-        ra_2 = torch.cat((robot_obs[:, self.single_robot_obs_size:], actions[:, self.single_robot_act_size:]), dim = -1)
-        ra_in_2 = self.ra_in_2(ra_2)
-        ra_in = torch.cat((ra_in_1, ra_in_2), dim=-1)
+        robot_obs_1 = x[:, :self.single_robot_obs_size]
+        robot_act_1 = act[:, :self.single_robot_act_size]
+        robot_obs_2 = x[:, self.single_robot_obs_size:self.robot_obs_size]
+        robot_act_2 = act[:, self.single_robot_act_size:]
         obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
             .reshape(batch_size, num_obj, self.obj_obs_size)
         goal_obs = x[:, self.robot_obs_size+self.obj_obs_size*num_obj:]\
             .reshape(batch_size, num_obj, self.goal_size)
-        og = torch.cat((obj_obs, goal_obs), dim=-1)
-        og_in = self.og_in(og)
-        # get attention q:robot k:og_i v:og_i
-        og_attn_1, _ = self.attn_1(ra_in_1.reshape(1, batch_size, 64), \
-            torch.movedim(og_in, 0, 1), torch.movedim(og_in, 0, 1))
-        og_attn_2, _ = self.attn_2(ra_in_2.reshape(1, batch_size, 64), \
-            torch.movedim(og_in, 0, 1), torch.movedim(og_in, 0, 1))
-        og_attn = torch.movedim(torch.cat((og_attn_1,og_attn_2),dim=-1), 0, 1).reshape(batch_size, 128)
-        # get q
-        q_value = self.q_out(torch.cat((og_attn, ra_in), dim = -1))
+        # get q_value
+        feature_1 = self.attn_1(torch.cat((robot_obs_1, robot_act_1), dim=-1), torch.cat((obj_obs, goal_obs), dim=-1))
+        feature_2 = self.attn_2(torch.cat((robot_obs_2, robot_act_2), dim=-1), torch.cat((obj_obs, goal_obs), dim=-1))
+        q_value = self.q_out(torch.cat((feature_1, feature_2), dim = -1))
         return q_value
