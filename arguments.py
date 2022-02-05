@@ -62,6 +62,7 @@ def get_args():
     # ReNN
     parser.add_argument('--use-renn', action='store_true')
     parser.add_argument('--use-attn', action='store_true')
+    parser.add_argument('--use-cross', action='store_true')
     parser.add_argument('--use-biattn', action='store_true')
     parser.add_argument('--use-crossattn', action='store_true')
     # multi-agent

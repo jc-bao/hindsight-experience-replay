@@ -72,10 +72,10 @@ class ddpg_agent:
             self.critic_network = critic_sum(env_params)
             self.critic_target_network = critic_sum(env_params)
         elif args.use_attn:
-            self.actor_network = actor_attn(env_params)
-            self.actor_target_network = actor_attn(env_params)
-            self.critic_network = critic_attn(env_params)
-            self.critic_target_network = critic_attn(env_params)
+            self.actor_network = actor_attn(env_params, args.use_cross)
+            self.actor_target_network = actor_attn(env_params, args.use_cross)
+            self.critic_network = critic_attn(env_params, args.use_cross)
+            self.critic_target_network = critic_attn(env_params, args.use_cross)
         elif args.use_biattn:
             self.actor_network = actor_attn(env_params)
             self.actor_target_network = actor_attn(env_params)

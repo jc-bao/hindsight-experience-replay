@@ -112,14 +112,43 @@ class AttentionExtractor(nn.Module):
         features = torch.mean(features, dim=1)
         return features
 
+class CrossAttentionExtractor(nn.Module):
+    def __init__(self, robot_dim, object_dim, hidden_size):
+        super(CrossAttentionExtractor, self).__init__()
+        self.robot_dim = robot_dim
+        self.object_dim = object_dim
+        self.robot_embed = nn.Sequential(
+            nn.Linear(robot_dim, hidden_size), nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size // 2), nn.ReLU(),
+        )
+        self.object_embed = nn.Sequential(
+            nn.Linear(object_dim, hidden_size), nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size // 2), nn.ReLU()
+        )
+        self.ln = nn.LayerNorm(hidden_size // 2)
+    
+    def forward(self, x):
+        robot_obs = x[:,0 , :self.robot_dim]
+        objects_obs = x[..., self.robot_dim:]
+        robot_embedding = self.robot_embed(robot_obs)  # (batch_size, hidden_size/2)
+        objects_embedding = self.object_embed(objects_obs)  # (batch_size, n_obj, hidden_size/2)
+        weights = torch.matmul(robot_embedding.unsqueeze(dim=1), objects_embedding.transpose(1, 2)) / np.sqrt(objects_embedding.size()[2])  # (batch_size, 1, n_obj)
+        weights = nn.functional.softmax(weights, dim=-1)  # (batch_size, 1, n_obj)
+        weighted_feature = torch.matmul(weights, objects_embedding).squeeze(dim=1)  # (batch_size, hidden_size/2)
+        weighted_feature = nn.functional.relu(self.ln(weighted_feature))
+        return torch.cat([robot_embedding, weighted_feature], dim=-1)  # (batch_size, hidden_size)
+
 class actor_attn(nn.Module):
-    def __init__(self, env_params):
+    def __init__(self, env_params, cross=False):
         super(actor_attn, self).__init__()
         self.max_action = env_params['action_max']
         self.goal_size = env_params['goal_size']
         self.obj_obs_size = env_params['obj_obs_size']
         self.robot_obs_size = env_params['robot_obs_size']
-        self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 64, n_attention_blocks=4, n_heads=1)
+        if cross:
+            self.feature_extractor = CrossAttentionExtractor(self.robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 64)
+        else:
+            self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size, self.obj_obs_size+self.goal_size, hidden_size = 64, n_attention_blocks=4, n_heads=1)
         self.mlp = nn.Sequential(
             *(  [nn.Linear(64, 64), nn.ReLU()] +
                 [nn.Linear(64, 64), nn.ReLU()] +
@@ -159,13 +188,16 @@ class actor_attn(nn.Module):
 
 
 class critic_attn(nn.Module):
-    def __init__(self, env_params):
+    def __init__(self, env_params, cross=False):
         super(critic_attn, self).__init__()
         self.max_action = env_params['action_max']
         self.goal_size = env_params['goal_size']
         self.obj_obs_size = env_params['obj_obs_size']
         self.robot_obs_size = env_params['robot_obs_size']
-        self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size+env_params['action'], self.obj_obs_size+self.goal_size, hidden_size = 64, n_attention_blocks=4, n_heads=1)
+        if cross:
+            self.feature_extractor = CrossAttentionExtractor(self.robot_obs_size+env_params['action'], self.obj_obs_size+self.goal_size, hidden_size = 64)
+        else:
+            self.feature_extractor = SelfAttentionExtractor(self.robot_obs_size+env_params['action'], self.obj_obs_size+self.goal_size, hidden_size = 64, n_attention_blocks=4, n_heads=1)
         self.mlp = nn.Sequential(
             *(  [nn.Linear(64, 64), nn.ReLU()] +
                 [nn.Linear(64, 64), nn.ReLU()] +
