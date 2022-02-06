@@ -377,7 +377,7 @@ class ddpg_agent:
         elif self.args.her_batch:
             update_times = int(self.args.n_batches / self.global_relabel_rate)
         else:
-            update_times = self.args.n_batches
+            update_times = self.args.n_batches * int(self.env._max_episode_steps/50)
         
         for _ in range(update_times):
             # sample the episodes
