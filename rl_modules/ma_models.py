@@ -181,3 +181,22 @@ class actor_multihead(nn.Module):
         actions = (act_mask*actions).sum(dim=1)
 
         return actions
+
+
+class actor_master(nn.Module):
+    def __init__(self, env_params):
+        super(actor_master, self).__init__()
+        self.single_act_size = int(env_params['action']/2)
+        self.max_action = env_params['action_max']
+        self.fc1 = nn.Linear(env_params['obs'] + env_params['goal'], 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.action_out = nn.Linear(256, self.single_act_size+1)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        actions = self.max_action * torch.tanh(self.action_out(x))[..., :self.single_act_size]
+        actions = torch.cat((actions, torch.zeros_like(actions)), dim=-1)
+        return actions
