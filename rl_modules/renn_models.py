@@ -72,8 +72,8 @@ class GraphPropagation(nn.Module):
         self.activation_fnx = F.leaky_relu
         self.graph_module_list = nn.ModuleList(
             [AttentiveGraphToGraph() for _ in range(self.num_relational_blocks)])
-        # self.layer_norms = nn.ModuleList(
-        #     [nn.LayerNorm(self.embedding_dim) for i in range(self.num_relational_blocks)])
+        self.layer_norms = nn.ModuleList(
+            [nn.LayerNorm(self.embedding_dim) for i in range(self.num_relational_blocks)])
 
     def forward(self, vertices):
         output = vertices
@@ -81,7 +81,7 @@ class GraphPropagation(nn.Module):
             new_output = self.graph_module_list[i](output)
             new_output = output + new_output
             output = self.activation_fnx(new_output)
-            # output = self.layer_norms[i](output)
+            output = self.layer_norms[i](output)
         return output
 
 class actor_ReNN(nn.Module):
@@ -93,20 +93,20 @@ class actor_ReNN(nn.Module):
         self.ignore_goal_size = env_params['ignore_goal_size'] #0 #3 # ignore gripper pos
         self.mlp_in = nn.Sequential(
             nn.Linear(self.robot_obs_size+self.obj_obs_size+self.goal_size, 64),
-            # nn.LayerNorm(64)
+            nn.LayerNorm(64)
         )
         self.graph_propagation = GraphPropagation()
         self.read_out = AttentiveGraphPooling()
         self.mlp_out = nn.Sequential(
             nn.Linear(64, 64),
             nn.ReLU(),
-            # nn.LayerNorm(64),
+            nn.LayerNorm(64),
             nn.Linear(64, 64),
             nn.ReLU(),
-            # nn.LayerNorm(64),
+            nn.LayerNorm(64),
             nn.Linear(64, 64),
             nn.ReLU(),
-            # nn.LayerNorm(64),
+            nn.LayerNorm(64),
             nn.Linear(64, env_params['action'])
         )
 
@@ -151,20 +151,20 @@ class critic_ReNN(nn.Module):
         self.ignore_goal_size = env_params['ignore_goal_size'] #0 #3 # ignore gripper pos
         self.mlp_in = nn.Sequential(
             nn.Linear(env_params['action'] + self.robot_obs_size+self.obj_obs_size+self.goal_size, 64),
-            # nn.LayerNorm(64)
+            nn.LayerNorm(64)
         )
         self.graph_propagation = GraphPropagation()
         self.read_out = AttentiveGraphPooling()
         self.mlp_out = nn.Sequential(
             nn.Linear(64, 64),
             nn.ReLU(),
-            # nn.LayerNorm(64),
+            nn.LayerNorm(64),
             nn.Linear(64, 64),
             nn.ReLU(),
-            # nn.LayerNorm(64),
+            nn.LayerNorm(64),
             nn.Linear(64, 64),
             nn.ReLU(),
-            # nn.LayerNorm(64),
+            nn.LayerNorm(64),
             nn.Linear(64, 1)
         )
 
