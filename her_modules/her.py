@@ -1,3 +1,4 @@
+from ast import Not
 from typing import no_type_check
 import numpy as np
 from numpy.core.fromnumeric import mean
@@ -65,3 +66,29 @@ class her_sampler:
         transitions = {k: transitions[k].reshape(batch_size, *transitions[k].shape[1:]) for k in transitions.keys()}
  
         return transitions
+
+class goal_sampler:
+    def __init__(self, args, achieved_trajectory_pool, env):
+        return
+		# self.args = args
+		# self.env = env
+		# self.dim = np.prod(self.env.reset()['achieved_goal'].shape)
+		# self.delta = self.env.distance_threshold
+
+		# self.length = args.episodes
+		# init_goal = self.env.reset()['achieved_goal'].copy()
+		# self.pool = np.tile(init_goal[np.newaxis,:],[self.length,1])+np.random.normal(0,self.delta,size=(self.length,self.dim))
+		# self.init_state = self.env.reset()['observation'].copy()
+
+		# self.match_lib = gcc_load_lib('learner/cost_flow.c')
+		# self.achieved_trajectory_pool = achieved_trajectory_pool
+
+		# # estimating diameter
+		# self.max_dis = 0
+		# for i in range(1000):
+		# 	obs = self.env.reset()
+		# 	dis = goal_distance(obs['achieved_goal'],obs['desired_goal'])
+		# 	if dis>self.max_dis: self.max_dis = dis
+
+    def sample(self, idx):
+        return self.add_noise(self.pool[idx])

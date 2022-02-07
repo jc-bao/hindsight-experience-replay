@@ -114,17 +114,17 @@ class critic_bilinear(nn.Module):
         sa = torch.cat([x[...,:self.env_params['obs']], actions / self.max_action], dim=1)
         f = self.f(sa)
         # phi(s, g)
-        assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0, \
-            f'Shape ERROR! obs_size{obs_size}, robot{self.robot_obs_size}, obj&goal{self.obj_obs_size+self.goal_size}'
-        num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))
-        robot_obs = x[:, :self.robot_obs_size].repeat(1,num_obj).reshape(batch_size, num_obj, self.robot_obs_size)
-        obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
-            .reshape(batch_size, num_obj, self.obj_obs_size)
-        goal_obs = x[:, self.robot_obs_size+self.obj_obs_size*num_obj:]\
-            .reshape(batch_size, num_obj, self.goal_size)
-        sg = torch.cat((robot_obs, obj_obs, goal_obs), dim=-1)
-        phi = self.phi(sg)
-        phi = torch.sum(phi, axis=-2)
+        # assert (obs_size-self.robot_obs_size) % (self.obj_obs_size + self.goal_size) == 0, \
+        #     f'Shape ERROR! obs_size{obs_size}, robot{self.robot_obs_size}, obj&goal{self.obj_obs_size+self.goal_size}'
+        # num_obj = int((obs_size-self.robot_obs_size) / (self.obj_obs_size + self.goal_size))
+        # robot_obs = x[:, :self.robot_obs_size].repeat(1,num_obj).reshape(batch_size, num_obj, self.robot_obs_size)
+        # obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
+        #     .reshape(batch_size, num_obj, self.obj_obs_size)
+        # goal_obs = x[:, self.robot_obs_size+self.obj_obs_size*num_obj:]\
+        #     .reshape(batch_size, num_obj, self.goal_size)
+        # sg = torch.cat((robot_obs, obj_obs, goal_obs), dim=-1)
+        phi = self.phi(x)
+        # phi = torch.sum(phi, axis=-2)
         #dot product
         q_value = torch.einsum('bs,bs->b', f, phi).reshape(-1, 1)
 

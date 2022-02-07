@@ -15,7 +15,7 @@ from rl_modules.biattn_models import critic_biattn, actor_biattn, critic_biselfa
 from rl_modules.ma_models import actor_shared, actor_separated, actor_dropout, actor_multihead,\
     actor_master_slave, actor_master, actor_attn_master_slave
 from mpi_utils.normalizer import normalizer
-from her_modules.her import her_sampler
+from her_modules.her import her_sampler, goal_sampler
 import wandb
 from tqdm import tqdm
 
@@ -74,8 +74,8 @@ class ddpg_agent:
             self.critic_network = critic_ReNN(env_params)
             self.critic_target_network = critic_ReNN(env_params)
         elif args.use_bilinear:
-            self.actor_network = actor_bilinear(env_params)
-            self.actor_target_network = actor_bilinear(env_params)
+            self.actor_network = actor(env_params)
+            self.actor_target_network = actor(env_params)
             self.critic_network = critic_bilinear(env_params)
             self.critic_target_network = critic_bilinear(env_params)
         elif args.use_critic_sum:
@@ -151,6 +151,8 @@ class ddpg_agent:
         self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=self.args.lr_critic)
         # her sampler
         self.her_module = her_sampler(self.args.replay_strategy, self.args.replay_k, self.env.compute_reward, random_unmoved = self.args.random_unmoved, not_relabel_unmoved = self.args.not_relabel_unmoved)
+        # goal sampler
+        # self.goal_sampler = goal_sampler()
         # create the replay buffer
         self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
         # create the normalizer
@@ -203,7 +205,7 @@ class ddpg_agent:
                 if curriculum_param < self.args.curriculum_end:
                     curriculum_param += self.args.curriculum_step
                 self.env.change(curriculum_param)
-                observation = self.env.reset()
+                observation = self.env.reset(self.goal_sampler.sample(1))
                 # extend normalizer to new observation
                 o_size = len(observation['observation'])
                 g_size = len(observation['desired_goal'])
