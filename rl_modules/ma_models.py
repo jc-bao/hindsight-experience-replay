@@ -1,7 +1,9 @@
+from unittest.mock import NonCallableMagicMock
 from numpy import double
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from .attn_models import actor_attn
 
 """
 Multi-agent Modules
@@ -202,11 +204,10 @@ class actor_master(nn.Module):
         return actions
 
 class actor_master_slave(nn.Module):
-    def __init__(self, env_params, obs_parser):
+    def __init__(self, env_params):
         super(actor_master_slave, self).__init__()
         self.single_act_size = int(env_params['action']/2)
         self.max_action = env_params['action_max']
-        self.obs_parser = obs_parser
         # self.master_net = nn.Sequential(
         #     nn.Linear(env_params['obs'] + env_params['goal'], 256),nn.ReLU(),
         #     nn.Linear(256, 256),nn.ReLU(),
@@ -246,3 +247,21 @@ class actor_master_slave(nn.Module):
         # actions = torch.cat((self.master_net(x)[...,:self.single_act_size], self.slave_net(self.obs_parser(x,mode='mirror'))[...,:self.single_act_size]*torch.Tensor([-1,-1,1,1])), dim=-1)
         actions = torch.cat((self.master_net(x)[...,:self.single_act_size], self.slave_net(x_mirror)[...,:self.single_act_size]*torch.Tensor([-1,-1,1,1])), dim=-1)
         return actions
+
+class actor_attn_master_slave(nn.Module):
+    def __init__(self, env_params, cross=False, num_blocks=4, master_only = False):
+        super(actor_attn_master_slave, self).__init__()
+        self.single_act_size = int(env_params['action']/2)
+        self.master_net = actor_attn(env_params, cross=cross, num_blocks=num_blocks)
+        if not master_only:
+            self.slave_net = actor_attn(env_params, cross=cross, num_blocks=num_blocks)
+
+    def forward(self, x, x_mirror=None):
+        master_act = self.master_net(x)[...,:self.single_act_size]
+        if not x_mirror == None:
+            slave_act = self.slave_net(x_mirror)[...,:self.single_act_size]*torch.Tensor([-1,-1,1,1])
+        else:
+            slave_act = torch.zeros_like(master_act)
+        actions = torch.cat((master_act, slave_act), dim=-1)
+        return actions
+

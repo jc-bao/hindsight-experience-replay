@@ -13,7 +13,7 @@ from rl_modules.renn_models import actor_ReNN, critic_ReNN
 from rl_modules.attn_models import actor_attn, critic_attn, actor_crossattn, critic_crossattn
 from rl_modules.biattn_models import critic_biattn, actor_biattn, critic_biselfattn
 from rl_modules.ma_models import actor_shared, actor_separated, actor_dropout, actor_multihead,\
-    actor_master_slave, actor_master
+    actor_master_slave, actor_master, actor_attn_master_slave
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
 import wandb
@@ -43,8 +43,12 @@ class ddpg_agent:
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
         elif args.actor_master_slave:
-            self.actor_network = actor_master_slave(env_params, self.env.obs_parser)
-            self.actor_target_network = actor_master_slave(env_params, self.env.obs_parser)
+            if self.args.use_attn:
+                self.actor_network = actor_attn_master_slave(env_params, cross=False, num_blocks=args.num_blocks, master_only = args.master_only)
+                self.actor_target_network = actor_attn_master_slave(env_params, cross=False, num_blocks=args.num_blocks, master_only = args.master_only)
+            else:
+                self.actor_network = actor_master_slave(env_params, self.env.obs_parser)
+                self.actor_target_network = actor_master_slave(env_params, self.env.obs_parser)
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
         elif args.actor_master:
@@ -229,7 +233,7 @@ class ddpg_agent:
                                 input_tensor = self._preproc_inputs(obs, g)
                                 if self.args.collect_from_expert:
                                     pi = self.expert_network(input_tensor)
-                                elif self.args.actor_master_slave:
+                                elif self.args.actor_master_slave and not self.args.master_only:
                                     input_tensor_mirror = self._preproc_inputs(obs, g, mirror=True)
                                     pi = self.actor_network(input_tensor, input_tensor_mirror)
                                 else:
@@ -437,7 +441,7 @@ class ddpg_agent:
             with torch.no_grad():
                 # do the normalization
                 # concatenate the stuffs
-                if self.args.actor_master_slave:
+                if self.args.actor_master_slave and not self.args.master_only:
                     inputs_next_norm_tensor_mirror = self._preproc_inputs(transitions['obs_next'], transitions['g_next'], mirror=True, not_unsqueeze=True)
                     actions_next = self.actor_target_network(inputs_next_norm_tensor, inputs_next_norm_tensor_mirror)
                 else:
@@ -453,7 +457,7 @@ class ddpg_agent:
             real_q_value = self.critic_network(inputs_norm_tensor, actions_tensor)
             critic_loss = (target_q_value - real_q_value).pow(2).mean()
             # the actor loss
-            if self.args.actor_master_slave:
+            if self.args.actor_master_slave and not self.args.master_only:
                 inputs_norm_tensor_mirror = self._preproc_inputs(transitions['obs'], transitions['g'], mirror=True, not_unsqueeze=True)
                 actions_real = self.actor_network(inputs_norm_tensor, inputs_norm_tensor_mirror)
             else:
@@ -497,7 +501,7 @@ class ddpg_agent:
                     input_tensor = self._preproc_inputs(obs, g)
                     if self.args.learn_from_expert and eval_new_actor:
                         pi = self.new_actor_network(input_tensor)
-                    elif self.args.actor_master_slave:
+                    elif self.args.actor_master_slave and not self.args.master_only:
                         input_tensor_mirror = self._preproc_inputs(obs, g, mirror=True)
                         pi = self.actor_network(input_tensor, input_tensor_mirror)
                     else:
@@ -550,7 +554,7 @@ class ddpg_agent:
                 else:
                     with torch.no_grad():
                         input_tensor = self._preproc_inputs(obs, g)
-                        if self.args.actor_master_slave:
+                        if self.args.actor_master_slave and not self.args.master_only:
                             input_tensor_mirror = self._preproc_inputs(obs, g, mirror=True)
                             pi = self.actor_network(input_tensor, input_tensor_mirror)
                         else:
