@@ -237,6 +237,7 @@ class ddpg_agent:
                                 action = self._select_actions(pi)
                             # if in extra_reset_steps steps, only step one action
                             if t < extra_reset_steps:
+                                ag_origin = ag
                                 if delay_agent:
                                     action = np.append(action[:4], np.zeros(4))
                                 else:
