@@ -332,7 +332,7 @@ class ddpg_agent:
             self.her_module.nochange_num = 0
 
     # pre_process the inputs
-    def _preproc_inputs(self, obs, g, mirror = False):
+    def _preproc_inputs(self, obs, g, mirror = False, not_unsqueeze = False):
         if mirror:
             x = np.concatenate((obs, g), axis=-1)
             x = self.env.obs_parser(x, mode='mirror')
@@ -341,8 +341,11 @@ class ddpg_agent:
         obs_norm = self.o_norm.normalize(obs)
         g_norm = self.g_norm.normalize(g)
         # concatenate the stuffs
-        inputs = np.concatenate([obs_norm, g_norm])
-        inputs = torch.tensor(inputs, dtype=torch.float32).unsqueeze(0)
+        inputs = np.concatenate((obs_norm, g_norm), axis=-1)
+        if not_unsqueeze:
+            inputs = torch.tensor(inputs, dtype=torch.float32)
+        else:
+            inputs = torch.tensor(inputs, dtype=torch.float32).unsqueeze(0)
         if self.args.cuda:
             inputs = inputs.cuda()
         return inputs
@@ -434,7 +437,11 @@ class ddpg_agent:
             with torch.no_grad():
                 # do the normalization
                 # concatenate the stuffs
-                actions_next = self.actor_target_network(inputs_next_norm_tensor)
+                if self.args.actor_master_slave:
+                    inputs_next_norm_tensor_mirror = self._preproc_inputs(transitions['obs_next'], transitions['g_next'], mirror=True, not_unsqueeze=True)
+                    actions_next = self.actor_target_network(inputs_next_norm_tensor, inputs_next_norm_tensor_mirror)
+                else:
+                    actions_next = self.actor_target_network(inputs_next_norm_tensor)
                 q_next_value = self.critic_target_network(inputs_next_norm_tensor, actions_next)
                 q_next_value = q_next_value.detach()
                 target_q_value = r_tensor + self.args.gamma * q_next_value
@@ -447,7 +454,7 @@ class ddpg_agent:
             critic_loss = (target_q_value - real_q_value).pow(2).mean()
             # the actor loss
             if self.args.actor_master_slave:
-                inputs_norm_tensor_mirror = self._preproc_inputs(transitions['obs'], transitions['g'], mirror=True)
+                inputs_norm_tensor_mirror = self._preproc_inputs(transitions['obs'], transitions['g'], mirror=True, not_unsqueeze=True)
                 actions_real = self.actor_network(inputs_norm_tensor, inputs_norm_tensor_mirror)
             else:
                 actions_real = self.actor_network(inputs_norm_tensor)
