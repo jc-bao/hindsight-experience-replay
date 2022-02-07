@@ -71,38 +71,38 @@ class actor_separated(nn.Module):
             act = torch.cat((act, self.max_action*module(x[:, i, :])), dim = 1)
         return act.reshape(batch_size, self.num_agents*self.partial_action_size)
 
-class actor_master_slave(nn.Module):
-    def __init__(self, env_params):
-        super(actor_master_slave, self).__init__()
-        self.max_action = env_params['action_max']
-        self.num_agents = env_params['num_agents']
-        self.partial_action_size = int(env_params['action']/self.num_agents)
-        self.goal_size = env_params['goal']
-        self.master_module = nn.Sequential(
-            nn.Linear(env_params['obs'] + self.partial_action_size + self.goal_size, 176), 
-            nn.ReLU(),
-            nn.Linear(176, 176),
-            nn.ReLU(),
-            nn.Linear(176, 176),
-            nn.ReLU(),
-            nn.Linear(176, self.partial_action_size),
-            nn.Tanh()
-        )
-        self.slave_module = nn.Sequential(
-            nn.Linear(env_params['obs'] + self.goal_size, 176), 
-            nn.ReLU(),
-            nn.Linear(176, 176),
-            nn.ReLU(),
-            nn.Linear(176, 176),
-            nn.ReLU(),
-            nn.Linear(176, self.partial_action_size),
-            nn.Tanh()
-        )
+# class actor_master_slave(nn.Module):
+#     def __init__(self, env_params):
+#         super(actor_master_slave, self).__init__()
+#         self.max_action = env_params['action_max']
+#         self.num_agents = env_params['num_agents']
+#         self.partial_action_size = int(env_params['action']/self.num_agents)
+#         self.goal_size = env_params['goal']
+#         self.master_module = nn.Sequential(
+#             nn.Linear(env_params['obs'] + self.partial_action_size + self.goal_size, 176), 
+#             nn.ReLU(),
+#             nn.Linear(176, 176),
+#             nn.ReLU(),
+#             nn.Linear(176, 176),
+#             nn.ReLU(),
+#             nn.Linear(176, self.partial_action_size),
+#             nn.Tanh()
+#         )
+#         self.slave_module = nn.Sequential(
+#             nn.Linear(env_params['obs'] + self.goal_size, 176), 
+#             nn.ReLU(),
+#             nn.Linear(176, 176),
+#             nn.ReLU(),
+#             nn.Linear(176, 176),
+#             nn.ReLU(),
+#             nn.Linear(176, self.partial_action_size),
+#             nn.Tanh()
+#         )
 
-    def forward(self, x):
-        act_slave = self.slave_module(x)
-        act_master = self.master_module(torch.cat((x, act_slave), dim = -1))
-        return torch.cat((act_slave, act_master), dim = -1)
+#     def forward(self, x):
+#         act_slave = self.slave_module(x)
+#         act_master = self.master_module(torch.cat((x, act_slave), dim = -1))
+#         return torch.cat((act_slave, act_master), dim = -1)
 
 class actor_dropout(nn.Module):
     def __init__(self, env_params):
@@ -191,7 +191,7 @@ class actor_master(nn.Module):
         self.fc1 = nn.Linear(env_params['obs'] + env_params['goal'], 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 256)
-        self.action_out = nn.Linear(256, self.single_act_size+1)
+        self.action_out = nn.Linear(256, self.single_act_size+4)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -199,4 +199,50 @@ class actor_master(nn.Module):
         x = F.relu(self.fc3(x))
         actions = self.max_action * torch.tanh(self.action_out(x))[..., :self.single_act_size]
         actions = torch.cat((actions, torch.zeros_like(actions)), dim=-1)
+        return actions
+
+class actor_master_slave(nn.Module):
+    def __init__(self, env_params, obs_parser):
+        super(actor_master_slave, self).__init__()
+        self.single_act_size = int(env_params['action']/2)
+        self.max_action = env_params['action_max']
+        self.obs_parser = obs_parser
+        # self.master_net = nn.Sequential(
+        #     nn.Linear(env_params['obs'] + env_params['goal'], 256),nn.ReLU(),
+        #     nn.Linear(256, 256),nn.ReLU(),
+        #     nn.Linear(256, 256),nn.ReLU(),
+        #     nn.Linear(256, self.single_act_size+4), nn.Tanh()
+        # )
+        self.master_net = actor_master(env_params)
+        self.slave_net = actor_master(env_params)
+        # self.master_fc1 = nn.Linear(env_params['obs'] + env_params['goal'], 256)
+        # self.master_fc2 = nn.Linear(256, 256)
+        # self.master_fc3 = nn.Linear(256, 256)
+        # self.master_action_out = nn.Linear(256, self.single_act_size+4)
+        # self.slave_net = nn.Sequential(
+        #     nn.Linear(env_params['obs'] + env_params['goal'], 256),nn.ReLU(),
+        #     nn.Linear(256, 256),nn.ReLU(),
+        #     nn.Linear(256, 256),nn.ReLU(),
+        #     nn.Linear(256, self.single_act_size+4), nn.Tanh()
+        # )
+        # self.slave_fc1 = nn.Linear(env_params['obs'] + env_params['goal'], 256)
+        # self.slave_fc2 = nn.Linear(256, 256)
+        # self.slave_fc3 = nn.Linear(256, 256)
+        # self.slave_action_out = nn.Linear(256, self.single_act_size+4)
+
+    def forward(self, x, x_mirror):
+
+        # x=[robot obs, obj obs, goal]
+        # master_act = self.master_net(x)[..., :self.single_act_size]*self.max_action
+        # master_act=F.relu(self.fc1(x))
+        # master_act = F.relu(self.fc2(master_act))
+        # master_act = F.relu(self.fc3(master_act))
+        # actions = self.max_action * torch.tanh(self.action_out(master_act))[..., :self.single_act_size]
+        # slave_act = self.slave_net(self.obs_parser(x, mode='mirror'))[..., :self.single_act_size]*self.max_action
+        # slave_act=F.relu(self.fc1(self.obs_parser(x)))
+        # slave_act = F.relu(self.fc2(slave_act))
+        # slave_act = F.relu(self.fc3(slave_act))
+        # actions = self.max_action * torch.tanh(self.action_out(slave_act))[..., :self.single_act_size]
+        # actions = torch.cat((self.master_net(x)[...,:self.single_act_size], self.slave_net(self.obs_parser(x,mode='mirror'))[...,:self.single_act_size]*torch.Tensor([-1,-1,1,1])), dim=-1)
+        actions = torch.cat((self.master_net(x)[...,:self.single_act_size], self.slave_net(x_mirror)[...,:self.single_act_size]*torch.Tensor([-1,-1,1,1])), dim=-1)
         return actions

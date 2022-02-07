@@ -46,6 +46,7 @@ def get_args():
     parser.add_argument('--max-trail-time', type=int, default=1, help='max trail time to collect a successful experence')
     parser.add_argument('--trail-mode', type=str, default='all')
     parser.add_argument('--render', action='store_true')
+    parser.add_argument('--gui', action='store_true')
     parser.add_argument('--dynamic-batch', action='store_true')
     parser.add_argument('--her-batch', action='store_true')
     parser.add_argument('--random-unmoved', action='store_true')
@@ -62,6 +63,8 @@ def get_args():
     # ReNN
     parser.add_argument('--use-renn', action='store_true')
     parser.add_argument('--use-attn', action='store_true')
+    parser.add_argument('--num-blocks', type = int, default = 4)
+
     parser.add_argument('--use-cross', action='store_true')
     parser.add_argument('--use-biattn', action='store_true')
     parser.add_argument('--use-crossattn', action='store_true')
@@ -82,6 +85,8 @@ def get_args():
     parser.add_argument('--drop-out-rate', type = float, default = 0.5)
     parser.add_argument('--num-agents', type = int, default = 3)
     parser.add_argument('--dim', type = int, default = 3)
+    # break symetry
+    parser.add_argument('--extra-reset-steps', type = int, default = 20)
     args = parser.parse_args()
 
     return args

@@ -1,3 +1,4 @@
+from matplotlib.pyplot import axes, axis
 import torch
 import os
 from datetime import datetime
@@ -42,8 +43,8 @@ class ddpg_agent:
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
         elif args.actor_master_slave:
-            self.actor_network = actor_master_slave(env_params)
-            self.actor_target_network = actor_master_slave(env_params)
+            self.actor_network = actor_master_slave(env_params, self.env.obs_parser)
+            self.actor_target_network = actor_master_slave(env_params, self.env.obs_parser)
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
         elif args.actor_master:
@@ -77,10 +78,10 @@ class ddpg_agent:
             self.critic_network = critic_sum(env_params)
             self.critic_target_network = critic_sum(env_params)
         elif args.use_attn:
-            self.actor_network = actor_attn(env_params, args.use_cross)
-            self.actor_target_network = actor_attn(env_params, args.use_cross)
-            self.critic_network = critic_attn(env_params, args.use_cross)
-            self.critic_target_network = critic_attn(env_params, args.use_cross)
+            self.actor_network = actor_attn(env_params, args.use_cross, args.num_blocks)
+            self.actor_target_network = actor_attn(env_params, args.use_cross, args.num_blocks)
+            self.critic_network = critic_attn(env_params, args.use_cross, args.num_blocks)
+            self.critic_target_network = critic_attn(env_params, args.use_cross, args.num_blocks)
         elif args.use_biattn:
             self.actor_network = actor_attn(env_params)
             self.actor_target_network = actor_attn(env_params)
@@ -121,6 +122,9 @@ class ddpg_agent:
             print('loaded done!')
             if self.args.learn_from_expert:
                 self.expert_network.load_state_dict(actor_model)
+            elif self.args.actor_master_slave:
+                self.actor_network.master_net.load_state_dict(actor_model)
+                self.actor_network.slave_net.load_state_dict(actor_model)
             else:
                 self.actor_network.load_state_dict(actor_model)
             self.critic_network.load_state_dict(critic_model)
@@ -218,25 +222,37 @@ class ddpg_agent:
                         info = observation.get('info') # if no info, return None
                         # start to collect samples
                         ag_origin = ag
-                        for t in range(self.env._max_episode_steps):
+                        extra_reset_steps = np.random.randint(self.env._max_episode_steps) if self.args.extra_reset_steps and np.random.uniform() < 0.5 else 0
+                        delay_agent = np.random.uniform() < 0.5
+                        for t in range(self.env._max_episode_steps+extra_reset_steps):
                             with torch.no_grad():
                                 input_tensor = self._preproc_inputs(obs, g)
                                 if self.args.collect_from_expert:
                                     pi = self.expert_network(input_tensor)
+                                elif self.args.actor_master_slave:
+                                    input_tensor_mirror = self._preproc_inputs(obs, g, mirror=True)
+                                    pi = self.actor_network(input_tensor, input_tensor_mirror)
                                 else:
                                     pi = self.actor_network(input_tensor)
                                 action = self._select_actions(pi)
+                            # if in extra_reset_steps steps, only step one action
+                            if t < extra_reset_steps:
+                                if delay_agent:
+                                    action = np.append(action[:4], np.zeros(4))
+                                else:
+                                    action = np.append(np.zeros(4), action[4:])
                             # feed the actions into the environment
                             observation_new, _, _, info = self.env.step(action)
                             # self.env.render()
                             obs_new = observation_new['observation']
                             ag_new = observation_new['achieved_goal']
                             # append rollouts
-                            ep_obs.append(obs.copy())
-                            ep_ag.append(ag.copy())
-                            ep_g.append(g.copy())
-                            ep_info.append(info.copy())
-                            ep_actions.append(action.copy())
+                            if t >= extra_reset_steps:
+                                ep_obs.append(obs.copy())
+                                ep_ag.append(ag.copy())
+                                ep_g.append(g.copy())
+                                ep_info.append(info.copy())
+                                ep_actions.append(action.copy())
                             # re-assign the observation
                             obs = obs_new
                             ag = ag_new
@@ -315,7 +331,12 @@ class ddpg_agent:
             self.her_module.nochange_num = 0
 
     # pre_process the inputs
-    def _preproc_inputs(self, obs, g):
+    def _preproc_inputs(self, obs, g, mirror = False):
+        if mirror:
+            x = np.concatenate((obs, g), axis=-1)
+            x = self.env.obs_parser(x, mode='mirror')
+            obs = x[..., :obs.shape[-1]]
+            g = x[..., obs.shape[-1]:]
         obs_norm = self.o_norm.normalize(obs)
         g_norm = self.g_norm.normalize(g)
         # concatenate the stuffs
@@ -424,7 +445,11 @@ class ddpg_agent:
             real_q_value = self.critic_network(inputs_norm_tensor, actions_tensor)
             critic_loss = (target_q_value - real_q_value).pow(2).mean()
             # the actor loss
-            actions_real = self.actor_network(inputs_norm_tensor)
+            if self.args.actor_master_slave:
+                inputs_norm_tensor_mirror = self._preproc_inputs(transitions['obs'], transitions['g'], mirror=True)
+                actions_real = self.actor_network(inputs_norm_tensor, inputs_norm_tensor_mirror)
+            else:
+                actions_real = self.actor_network(inputs_norm_tensor)
             q_loss = -self.critic_network(inputs_norm_tensor, actions_real).mean()
             actor_loss = self.args.q_coef * q_loss
             actor_loss += self.args.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
@@ -457,21 +482,32 @@ class ddpg_agent:
             observation = self.env.reset()
             obs = observation['observation']
             g = observation['desired_goal']
-            for _ in range(self.env_params['max_timesteps']):
+            extra_reset_steps = np.random.randint(self.env._max_episode_steps) if self.args.extra_reset_steps and np.random.uniform()<0.5 else 0
+            delay_agent = np.random.uniform()<0.5
+            for t in range(self.env_params['max_timesteps']+extra_reset_steps):
                 with torch.no_grad():
                     input_tensor = self._preproc_inputs(obs, g)
                     if self.args.learn_from_expert and eval_new_actor:
                         pi = self.new_actor_network(input_tensor)
+                    elif self.args.actor_master_slave:
+                        input_tensor_mirror = self._preproc_inputs(obs, g, mirror=True)
+                        pi = self.actor_network(input_tensor, input_tensor_mirror)
                     else:
                         pi = self.actor_network(input_tensor)
                     # convert the actions
                     actions = pi.detach().cpu().numpy().squeeze()
+                if t < extra_reset_steps:
+                    if delay_agent:
+                        actions = np.append(actions[:4], np.zeros(4))
+                    else:
+                        actions = np.append(np.zeros(4), actions[4:])
                 observation_new, reward, _, info = self.env.step(actions)
                 # self.env.render(mode='human')
                 obs = observation_new['observation']
                 g = observation_new['desired_goal']
-                per_success_rate.append(info['is_success'])
-                per_reward.append(reward)
+                if t >= extra_reset_steps:
+                    per_success_rate.append(info['is_success'])
+                    per_reward.append(reward)
                 if MPI.COMM_WORLD.Get_rank() == 0 and render:
                     frame = np.array(self.env.render(mode = 'rgb_array'))
                     frame = np.moveaxis(frame, -1, 0)
@@ -506,7 +542,11 @@ class ddpg_agent:
                 else:
                     with torch.no_grad():
                         input_tensor = self._preproc_inputs(obs, g)
-                        pi = self.actor_network(input_tensor)
+                        if self.args.actor_master_slave:
+                            input_tensor_mirror = self._preproc_inputs(obs, g, mirror=True)
+                            pi = self.actor_network(input_tensor, input_tensor_mirror)
+                        else:
+                            pi = self.actor_network(input_tensor)
                         action = self._select_actions(pi)
                 # feed the actions into the environment
                 observation_new, _, _, info = self.env.step(action)
