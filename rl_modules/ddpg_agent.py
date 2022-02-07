@@ -44,13 +44,15 @@ class ddpg_agent:
             self.critic_target_network = critic(env_params)
         elif args.actor_master_slave:
             if self.args.use_attn:
-                self.actor_network = actor_attn_master_slave(env_params, cross=False, num_blocks=args.num_blocks, master_only = args.master_only)
-                self.actor_target_network = actor_attn_master_slave(env_params, cross=False, num_blocks=args.num_blocks, master_only = args.master_only)
+                self.actor_network = actor_attn_master_slave(env_params, args.use_cross, args.num_blocks, master_only = args.master_only)
+                self.actor_target_network = actor_attn_master_slave(env_params, args.use_cross, args.num_blocks, master_only = args.master_only)
+                self.critic_network = critic_attn(env_params, args.use_cross, args.num_blocks)
+                self.critic_target_network = critic_attn(env_params, args.use_cross, args.num_blocks)
             else:
                 self.actor_network = actor_master_slave(env_params, self.env.obs_parser)
                 self.actor_target_network = actor_master_slave(env_params, self.env.obs_parser)
-            self.critic_network = critic(env_params)
-            self.critic_target_network = critic(env_params)
+                self.critic_network = critic(env_params)
+                self.critic_target_network = critic(env_params)
         elif args.actor_master:
             self.actor_network = actor_master(env_params)
             self.actor_target_network = actor_master(env_params)
