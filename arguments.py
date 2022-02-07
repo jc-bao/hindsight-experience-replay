@@ -86,7 +86,7 @@ def get_args():
     parser.add_argument('--num-agents', type = int, default = 3)
     parser.add_argument('--dim', type = int, default = 3)
     # break symetry
-    parser.add_argument('--extra-reset-steps', type = int, default = 20)
+    parser.add_argument('--extra-reset-steps', action='store_true')
     args = parser.parse_args()
 
     return args
