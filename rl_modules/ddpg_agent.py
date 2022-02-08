@@ -247,9 +247,9 @@ class ddpg_agent:
                             if t < extra_reset_steps:
                                 ag_origin = ag
                                 if delay_agent:
-                                    action = np.append(action[:4], np.zeros(4))
+                                    action = np.append(action[:4], np.array([0,0,0,-1]))
                                 else:
-                                    action = np.append(np.zeros(4), action[4:])
+                                    action = np.append(np.array([0,0,0,-1]), action[4:])
                             # feed the actions into the environment
                             observation_new, _, _, info = self.env.step(action)
                             # self.env.render()
