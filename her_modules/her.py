@@ -1,8 +1,15 @@
-from ast import Not
-from typing import no_type_check
+import os
+import ctypes
 import numpy as np
-from numpy.core.fromnumeric import mean
-import wandb
+
+def gcc_complie(c_path, so_path=None):
+	assert c_path[-2:]=='.c'
+	if so_path is None:
+		so_path = c_path[:-2]+'.so'
+	else:
+		assert so_path[-3:]=='.so'
+	os.system('gcc -o '+so_path+' -shared -fPIC '+c_path+' -O2')
+	return so_path
 
 class her_sampler:
     def __init__(self, replay_strategy, replay_k, reward_func=None, random_unmoved = False, not_relabel_unmoved = False):
@@ -67,28 +74,59 @@ class her_sampler:
  
         return transitions
 
-class goal_sampler:
-    def __init__(self, args, achieved_trajectory_pool, env):
-        return
-		# self.args = args
-		# self.env = env
-		# self.dim = np.prod(self.env.reset()['achieved_goal'].shape)
-		# self.delta = self.env.distance_threshold
+# class goal_sampler:
+#     def __init__(self, args, env, env_params):
+#         self.args = args
+#         self.env = env
+#         self.dim = env_params['goal_size']
+#         self.delta = self.env.task.distance_threshold
+# 		self.length = args.n_cycles*args.num_rollouts_per_mpi
+# 		init_goal = self.env.reset()['achieved_goal'].copy()
+# 		self.pool = np.tile(init_goal[np.newaxis,:],[self.length,1])+np.random.normal(0,self.delta,size=(self.length,self.dim))
+# 		self.init_state = self.env.reset()['observation'].copy()
 
-		# self.length = args.episodes
-		# init_goal = self.env.reset()['achieved_goal'].copy()
-		# self.pool = np.tile(init_goal[np.newaxis,:],[self.length,1])+np.random.normal(0,self.delta,size=(self.length,self.dim))
-		# self.init_state = self.env.reset()['observation'].copy()
+# 		self.match_lib = gcc_complie('hgg/cost_flow.c')
+# 		self.achieved_trajectory_pool = TrajectoryPool(args.hgg_pool_size)
 
-		# self.match_lib = gcc_load_lib('learner/cost_flow.c')
-		# self.achieved_trajectory_pool = achieved_trajectory_pool
+# 		# estimating diameter
+# 		self.max_dis = 0
+# 		for i in range(1000):
+# 			obs = self.env.reset()
+# 			dis = goal_distance(obs['achieved_goal'],obs['desired_goal'])
+# 			if dis>self.max_dis: self.max_dis = dis
 
-		# # estimating diameter
-		# self.max_dis = 0
-		# for i in range(1000):
-		# 	obs = self.env.reset()
-		# 	dis = goal_distance(obs['achieved_goal'],obs['desired_goal'])
-		# 	if dis>self.max_dis: self.max_dis = dis
+#     def sample(self, idx):
+#         return self.add_noise(self.pool[idx])
 
-    def sample(self, idx):
-        return self.add_noise(self.pool[idx])
+#     def add_noise(self, pre_goal, noise_std=None):
+# 		goal = pre_goal.copy()
+# 		dim = 2 if self.args.env[:5]=='Fetch' else self.dim
+# 		if noise_std is None: noise_std = self.delta
+# 		goal[:dim] += np.random.normal(0, noise_std, size=dim)
+# 		return goal.copy()
+
+# class TrajectoryPool:
+# 	def __init__(self, pool_length):
+# 		self.length = pool_length
+# 		self.pool = []
+# 		self.pool_init_state = []
+# 		self.counter = 0
+
+# 	def insert(self, trajectory, init_state):
+# 		if self.counter<self.length:
+# 			self.pool.append(trajectory.copy())
+# 			self.pool_init_state.append(init_state.copy())
+# 		else:
+# 			self.pool[self.counter%self.length] = trajectory.copy()
+# 			self.pool_init_state[self.counter%self.length] = init_state.copy()
+# 		self.counter += 1
+
+# 	def pad(self):
+# 		if self.counter>=self.length:
+# 			return self.pool.copy(), self.pool_init_state.copy()
+# 		pool = self.pool.copy()
+# 		pool_init_state = self.pool_init_state.copy()
+# 		while len(pool)<self.length:
+# 			pool += self.pool.copy()
+# 			pool_init_state += self.pool_init_state.copy()
+# 		return pool[:self.length].copy(), pool_init_state[:self.length].copy()

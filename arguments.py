@@ -88,6 +88,8 @@ def get_args():
     parser.add_argument('--dim', type = int, default = 3)
     # break symetry
     parser.add_argument('--extra-reset-steps', action='store_true')
+    # hgg
+    parser.add_argument('--hgg-pool-size', type = int, default = 1000)
     args = parser.parse_args()
 
     return args
