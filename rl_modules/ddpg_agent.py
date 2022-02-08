@@ -119,9 +119,9 @@ class ddpg_agent:
             else:
                 path = self.args.model_path
             try:
-                # o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+                o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
                 # OLD Version 
-                o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+                # o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             except:
                 print('fail to load the model!')
                 exit()
@@ -160,13 +160,13 @@ class ddpg_agent:
         self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
         if args.resume:
             # Note: if use object number curriculum, the normalizer need to be extended
-            # self.o_norm.load(o_dict)
-            # self.g_norm.load(g_dict)
+            self.o_norm.load(o_dict)
+            self.g_norm.load(g_dict)
             # OLD VERSION 
-            self.o_norm.mean = o_mean
-            self.o_norm.std = o_std
-            self.g_norm.mean = g_mean
-            self.g_norm.std = g_std
+            # self.o_norm.mean = o_mean
+            # self.o_norm.std = o_std
+            # self.g_norm.mean = g_mean
+            # self.g_norm.std = g_std
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             # if not os.path.exists(self.args.save_dir):
