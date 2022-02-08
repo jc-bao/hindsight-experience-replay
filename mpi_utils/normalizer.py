@@ -76,20 +76,33 @@ class normalizer:
         if old_size == None:
             old_size = self.size
             self.size = new_size
-        assert (old_size <= new_size) and (new_size <= old_size*2), \
-            f'Old size:{old_size}, New size:{new_size}'
+        # assert (old_size <= new_size) and (new_size <= old_size*2), \
+        #     f'Old size:{old_size}, New size:{new_size}'
         if old_size == new_size:
             return
-        extend_length = new_size - old_size
-        # local information
-        self.local_sum = np.append(self.local_sum, self.local_sum[-extend_length:])
-        self.local_sumsq = np.append(self.local_sumsq, self.local_sumsq[-extend_length:])
-        # total sum sumsq and sum count
-        self.total_sum = np.append(self.total_sum, self.total_sum[-extend_length:])
-        self.total_sumsq = np.append(self.total_sumsq, self.total_sumsq[-extend_length:])
-        # get the mean and std
-        self.mean = np.append(self.mean, self.mean[-extend_length:])
-        self.std = np.append(self.std, self.std[-extend_length:])
+        elif old_size > new_size:
+            # local information
+            self.local_sum = self.local_sum[:new_size]
+            self.local_sumsq = self.local_sumsq[:new_size]
+            # total sum sumsq and sum count
+            self.total_sum = self.total_sum[:new_size]
+            self.total_sumsq = self.total_sumsq[:new_size]
+            # get the mean and std
+            self.mean = self.mean[:new_size]
+            self.std = self.std[:new_size]
+            return
+        else:
+            extend_length = new_size - old_size
+            # local information
+            self.local_sum = np.append(self.local_sum, self.local_sum[-extend_length:])
+            self.local_sumsq = np.append(self.local_sumsq, self.local_sumsq[-extend_length:])
+            # total sum sumsq and sum count
+            self.total_sum = np.append(self.total_sum, self.total_sum[-extend_length:])
+            self.total_sumsq = np.append(self.total_sumsq, self.total_sumsq[-extend_length:])
+            # get the mean and std
+            self.mean = np.append(self.mean, self.mean[-extend_length:])
+            self.std = np.append(self.std, self.std[-extend_length:])
+            return
 
     def load(self, config):
         self.eps = config['eps']

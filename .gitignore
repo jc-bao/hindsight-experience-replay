@@ -114,4 +114,6 @@ saved_model/
 
 *.log
 
+*.prof
+
 wandb/
