@@ -205,7 +205,7 @@ class ddpg_agent:
                 if curriculum_param < self.args.curriculum_end:
                     curriculum_param += self.args.curriculum_step
                 self.env.change(curriculum_param)
-                observation = self.env.reset(self.goal_sampler.sample(1))
+                observation = self.env.reset()
                 # extend normalizer to new observation
                 o_size = len(observation['observation'])
                 g_size = len(observation['desired_goal'])
