@@ -514,9 +514,9 @@ class ddpg_agent:
                     actions = pi.detach().cpu().numpy().squeeze()
                 if t < extra_reset_steps:
                     if delay_agent:
-                        actions = np.append(actions[:4], np.zeros(4))
+                        actions = np.append(actions[:4], np.array([0,0,0,-1]))
                     else:
-                        actions = np.append(np.zeros(4), actions[4:])
+                        actions = np.append(np.array([0,0,0,-1]), actions[4:])
                 observation_new, reward, _, info = self.env.step(actions)
                 # self.env.render(mode='human')
                 obs = observation_new['observation']
