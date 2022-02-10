@@ -1,3 +1,4 @@
+from ast import Not
 from matplotlib.pyplot import axes, axis
 import torch
 import os
@@ -31,6 +32,7 @@ class ddpg_agent:
         # MPI
         self.comm = MPI.COMM_WORLD
         self.nprocs = self.comm.Get_size()
+        # path to save the model
         self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name)
         # create the network and target network
         if args.actor_shared:
@@ -205,7 +207,13 @@ class ddpg_agent:
                     curriculum_param += self.args.curriculum_step
                     torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + f'/model{curriculum_param}.pt')
-                self.env.change(curriculum_param)
+                if self.args.curriculum_type == 'env_param':
+                    self.env.change(curriculum_param)
+                elif self.args.curriculum_type == 'dropout':
+                    self.actor_network.dropout_vel_rate = curriculum_param
+                    self.actor_target_network.dropout_vel_rate = curriculum_param
+                else:
+                    raise NotImplementedError
                 observation = self.env.reset()
                 # extend normalizer to new observation
                 o_size = len(observation['observation'])

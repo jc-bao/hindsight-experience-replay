@@ -37,6 +37,7 @@ def get_args():
     parser.add_argument('--curriculum', action='store_true', help='if use curriculum to train')
     parser.add_argument('--curriculum-reward', action='store_true', help='if use reward as curriculum bar')
     parser.add_argument('--resume', action='store_true', help='if resume old model')
+    parser.add_argument('--curriculum-type', default='env_param', type = str)
     parser.add_argument('--curriculum-bar', default=0.5, type = float)
     parser.add_argument('--curriculum-init', default=0, type = float)
     parser.add_argument('--curriculum-end', default=1, type = float)
@@ -83,7 +84,7 @@ def get_args():
     parser.add_argument('--actor-dropout', action='store_true')
     parser.add_argument('--actor-multihead', action='store_true')
     parser.add_argument('--actor-large', action='store_true')
-    parser.add_argument('--drop-out-rate', type = float, default = 0.5)
+    parser.add_argument('--drop-out-rate', type = float, default = 0)
     parser.add_argument('--num-agents', type = int, default = 3)
     parser.add_argument('--dim', type = int, default = 3)
     # break symetry
