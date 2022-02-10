@@ -32,6 +32,8 @@ class ddpg_agent:
         # MPI
         self.comm = MPI.COMM_WORLD
         self.nprocs = self.comm.Get_size()
+        # path to save the model
+        self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name)
         # create the network and target network
         if args.actor_shared:
             self.actor_network = actor_shared(env_params)
@@ -172,8 +174,6 @@ class ddpg_agent:
         if MPI.COMM_WORLD.Get_rank() == 0:
             # if not os.path.exists(self.args.save_dir):
             #     os.mkdir(self.args.save_dir, exist_ok=True)
-            # path to save the model
-            self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name)
             if not os.path.exists(self.model_path):
                 os.makedirs(self.model_path)
             # start wandb to log
