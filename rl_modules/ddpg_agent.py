@@ -204,6 +204,8 @@ class ddpg_agent:
             if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end:
                     curriculum_param += self.args.curriculum_step
+                    torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                            self.model_path + f'/model{curriculum_param}.pt')
                 self.env.change(curriculum_param)
                 observation = self.env.reset()
                 # extend normalizer to new observation
