@@ -9,8 +9,9 @@ the input x in both networks should be [o, g], where o is the observation and g 
 
 # define the actor network
 class actor(nn.Module):
-    def __init__(self, env_params):
+    def __init__(self, env_params, dropout_vel_rate = 0):
         super(actor, self).__init__()
+        self.dropout_vel_rate = dropout_vel_rate
         self.max_action = env_params['action_max']
         self.fc1 = nn.Linear(env_params['obs'] + env_params['goal'], 256)
         self.fc2 = nn.Linear(256, 256)
@@ -18,6 +19,8 @@ class actor(nn.Module):
         self.action_out = nn.Linear(256, env_params['action'])
 
     def forward(self, x):
+        # dropout vel
+        x[..., 20:26] = x[..., 20:26]*(torch.rand_like(x[..., 20:26]) >= self.dropout_vel_rate)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
