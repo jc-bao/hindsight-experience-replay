@@ -249,12 +249,15 @@ class actor_master_slave(nn.Module):
         return actions
 
 class actor_attn_master_slave(nn.Module):
-    def __init__(self, env_params, cross=False, num_blocks=4, master_only = False):
+    def __init__(self, env_params, cross=False, num_blocks=4, master_only = False, shared_policy = False):
         super(actor_attn_master_slave, self).__init__()
         self.single_act_size = int(env_params['action']/2)
         self.master_net = actor_attn(env_params, cross=cross, num_blocks=num_blocks)
         if not master_only:
             self.slave_net = actor_attn(env_params, cross=cross, num_blocks=num_blocks)
+        elif shared_policy:
+            self.slave_net = self.master_net
+
 
     def forward(self, x, x_mirror=None):
         master_act = self.master_net(x)[...,:self.single_act_size]
@@ -264,4 +267,3 @@ class actor_attn_master_slave(nn.Module):
             slave_act = torch.zeros_like(master_act)
         actions = torch.cat((master_act, slave_act), dim=-1)
         return actions
-
