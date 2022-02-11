@@ -45,6 +45,7 @@ def get_args():
     parser.add_argument('--use-bilinear', action='store_true')
     parser.add_argument('--use-critic-sum', action='store_true')
     parser.add_argument('--max-trail-time', type=int, default=1, help='max trail time to collect a successful experence')
+    parser.add_argument('--ignore-drop', action='store_true')
     parser.add_argument('--trail-mode', type=str, default='all')
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--gui', action='store_true')

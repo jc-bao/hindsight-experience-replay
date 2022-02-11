@@ -275,13 +275,14 @@ class ddpg_agent:
                             ag = ag_new
                         # check if use this rollout
                         if_moved = np.linalg.norm(ag.reshape(-1,self.args.dim) - ag_origin.reshape(-1,self.args.dim), axis=-1) > 0.005
+                        if_drop = np.any(ag.reshape(-1,self.args.dim)[..., -1] < (-0.1)) and self.args.ignore_drop
                         if self.args.trail_mode == 'all':
                             if_moved = if_moved.all()
                         elif self.args.trail_mode == 'any':
                             if_moved = if_moved.any()
                         else:
                             raise NotImplementedError
-                        if if_moved:
+                        if if_moved and (not if_drop):
                             break
                         else:
                             num_useless_rollout += 1
