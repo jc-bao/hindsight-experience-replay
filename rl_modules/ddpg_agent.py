@@ -121,13 +121,9 @@ class ddpg_agent:
                 path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name, 'model.pt')
             else:
                 path = self.args.model_path
-            try:
-                o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
-                # OLD Version 
-                # o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
-            except:
-                print('fail to load the model!')
-                exit()
+            o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+            # OLD Version 
+            # o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             print('loaded done!')
             if self.args.learn_from_expert:
                 self.expert_network.load_state_dict(actor_model)
@@ -200,13 +196,16 @@ class ddpg_agent:
         self.global_relabel_rate = 0.3
         curriculum_param = self.args.curriculum_init
         curri_indicator = 0
+        best_success_rate = 0
         for epoch in range(self.args.n_epochs):
             # start curriculum
             if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end:
-                    curriculum_param += self.args.curriculum_step
+                    best_success_rate = 0
                     torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
-                            self.model_path + f'/model{curriculum_param}.pt')
+                            self.model_path + f'/curr{curriculum_param:.2f}_model.pt')
+                    print(f'save curriculum {curriculum_param:.2f} end model at {self.model_path}')
+                    curriculum_param += self.args.curriculum_step
                 if self.args.curriculum_type == 'env_param':
                     self.env.change(curriculum_param)
                 elif self.args.curriculum_type == 'dropout':
@@ -326,7 +325,12 @@ class ddpg_agent:
                 # save data
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
                 torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
-                            self.model_path + '/model.pt')
+                            self.model_path + '/latest_model.pt')
+                if data['success_rate'] > best_success_rate:
+                    best_success_rate = data['success_rate']
+                    torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                            self.model_path + f'/curr{curriculum_param:.2f}_best_model.pt')
+                    print(f'save curriculum {curriculum_param:.2f} best model at {self.model_path}')
                 if self.args.wandb:
                     # log data
                     wandb.log(
