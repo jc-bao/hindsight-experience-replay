@@ -139,8 +139,9 @@ class CrossAttentionExtractor(nn.Module):
         return torch.cat([robot_embedding, weighted_feature], dim=-1)  # (batch_size, hidden_size)
 
 class actor_attn(nn.Module):
-    def __init__(self, env_params, cross=False, num_blocks=4):
+    def __init__(self, env_params, cross=False, num_blocks=4, dropout_vel_rate = 0):
         super(actor_attn, self).__init__()
+        self.dropout_vel_rate = dropout_vel_rate
         self.max_action = env_params['action_max']
         self.goal_size = env_params['goal_size']
         self.obj_obs_size = env_params['obj_obs_size']
@@ -176,6 +177,7 @@ class actor_attn(nn.Module):
         robot_obs = x[:, :self.robot_obs_size].repeat(1,num_obj).reshape(batch_size, num_obj, self.robot_obs_size)
         obj_obs = x[:, self.robot_obs_size : self.robot_obs_size+self.obj_obs_size*num_obj]\
             .reshape(batch_size, num_obj, self.obj_obs_size)
+        obj_obs[..., 6:12] = obj_obs[..., 6:12] * (torch.rand_like(obj_obs[..., 6:12]) >= self.dropout_vel_rate)
         goal_obs = x[:, self.robot_obs_size+self.obj_obs_size*num_obj:]\
             .reshape(batch_size, num_obj, self.goal_size)
         return torch.cat((robot_obs, obj_obs, goal_obs), dim=-1)
