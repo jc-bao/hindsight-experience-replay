@@ -202,9 +202,10 @@ class ddpg_agent:
             if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end:
                     best_success_rate = 0
-                    torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
-                            self.model_path + f'/curr{curriculum_param:.2f}_model.pt')
-                    print(f'save curriculum {curriculum_param:.2f} end model at {self.model_path}')
+                    if MPI.COMM_WORLD.Get_rank() == 0:
+                        torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                                self.model_path + f'/curr{curriculum_param:.2f}_model.pt')
+                        print(f'save curriculum {curriculum_param:.2f} end model at {self.model_path}')
                     curriculum_param += self.args.curriculum_step
                 if self.args.curriculum_type == 'env_param':
                     self.env.change(curriculum_param)
