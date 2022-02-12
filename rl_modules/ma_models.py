@@ -254,9 +254,10 @@ class actor_attn_master_slave(nn.Module):
         self.single_act_size = int(env_params['action']/2)
         self.master_net = actor_attn(env_params, cross=cross, num_blocks=num_blocks)
         if not master_only:
-            self.slave_net = actor_attn(env_params, cross=cross, num_blocks=num_blocks)
-        elif shared_policy:
-            self.slave_net = self.master_net
+            if shared_policy:
+                self.slave_net = self.master_net
+            else:
+                self.slave_net = actor_attn(env_params, cross=cross, num_blocks=num_blocks)
 
 
     def forward(self, x, x_mirror=None):
