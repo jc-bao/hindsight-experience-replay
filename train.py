@@ -75,6 +75,7 @@ def launch(args):
     # create the ddpg agent to interact with the environment 
     ddpg_trainer = ddpg_agent(args, env, env_params)
     ddpg_trainer.learn()
+    env.close()
 
 if __name__ == '__main__':
     # take the configuration for the HER
