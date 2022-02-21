@@ -1,4 +1,5 @@
 import argparse
+import json
 
 """
 Here are the param for the training
@@ -48,9 +49,6 @@ def get_args():
     parser.add_argument('--ignore-drop', action='store_true')
     parser.add_argument('--trail-mode', type=str, default='all')
     parser.add_argument('--render', action='store_true')
-    parser.add_argument('--gui', action='store_true')
-    parser.add_argument('--store-trajectory', action='store_true')
-    parser.add_argument('--store-video', action='store_true')
     parser.add_argument('--dynamic-batch', action='store_true')
     parser.add_argument('--her-batch', action='store_true')
     parser.add_argument('--random-unmoved', action='store_true')
@@ -95,6 +93,8 @@ def get_args():
     parser.add_argument('--extra-reset-steps', action='store_true')
     # hgg
     parser.add_argument('--hgg-pool-size', type = int, default = 1000)
+    # environment config
+    parser.add_argument('--env-kwargs', type=json.loads, default={})
     args = parser.parse_args()
 
     return args

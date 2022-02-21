@@ -62,7 +62,7 @@ def launch(args):
         import formation_gym
         env = formation_gym.make_env(args.env_name, benchmark=False, num_agents = args.num_agents, reward_type=args.reward_type)
     else:
-        env = gym.make(args.env_name, render = args.gui, store_trajectory = args.store_trajectory, store_video = args.store_video)
+        env = gym.make(args.env_name, **args.env_kwargs)
     # set random seeds for reproduce
     env.seed(args.seed + MPI.COMM_WORLD.Get_rank())
     random.seed(args.seed + MPI.COMM_WORLD.Get_rank())
