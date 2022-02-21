@@ -1,6 +1,6 @@
 python ../train.py \
 --n-epochs 10 --n-cycles 0 --n-batches 0 --buffer-size 1000 --batch-size 32 --n-test-rollouts 2 \
---env-name PandaTowerBimanual-v1 \
+--env-name PandaTowerBimanualParallelFinalRewSubgoal-v1 \
 --resume --model-path '/Users/reedpan/Downloads/curr1.50_best_model.pt' \
 --gui \
 --use-attn --num-blocks 4 \

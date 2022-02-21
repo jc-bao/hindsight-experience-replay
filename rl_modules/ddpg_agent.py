@@ -332,15 +332,16 @@ class ddpg_agent:
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
                 torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + '/latest_model.pt')
+                if self.args.wandb:
+                    wandb.save(self.model_path + '/latest_model.pt')
                 if data['success_rate'] > best_success_rate:
                     best_success_rate = data['success_rate']
                     torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + f'/curr{curriculum_param:.2f}_best_model.pt')
+                    if self.args.wandb:
+                        wandb.save(self.model_path + f'/curr{curriculum_param:.2f}_best_model.pt')
                     print(f'save curriculum {curriculum_param:.2f} best model at {self.model_path}')
                 if self.args.wandb:
-                    # upload model
-                    wandb.save(self.model_path + '/latest_model.pt')
-                    wandb.save(self.model_path + f'/curr{curriculum_param:.2f}_best_model.pt')
                     # log data
                     wandb.log(
                         {
