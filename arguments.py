@@ -36,7 +36,7 @@ def get_args():
     parser.add_argument('--cuda', action='store_true', help='if use gpu do the acceleration')
     parser.add_argument('--num-rollouts-per-mpi', type=int, default=2, help='the rollouts per mpi')
     parser.add_argument('--curriculum', action='store_true', help='if use curriculum to train')
-    parser.add_argument('--curriculum-reward', action='store_true', help='if use reward as curriculum bar')
+    parser.add_argument('--curriculum-indicator', type=str, default='success_rate')
     parser.add_argument('--resume', action='store_true', help='if resume old model')
     parser.add_argument('--curriculum-type', default='env_param', type = str)
     parser.add_argument('--curriculum-bar', default=0.5, type = float)
@@ -95,6 +95,8 @@ def get_args():
     parser.add_argument('--hgg-pool-size', type = int, default = 1000)
     # environment config
     parser.add_argument('--env-kwargs', type=json.loads, default={})
+    # evaluate case
+    # e.g. '{"num_need_handover": 0, "num_need_handover": 1}'
+    parser.add_argument('--eval-kwargs', type=json.loads, default={})
     args = parser.parse_args()
-
     return args

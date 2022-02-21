@@ -29,6 +29,8 @@ class ddpg_agent:
         self.args = args
         self.env = env
         self.env_params = env_params
+        if self.args.curriculum_type == 'task_distribution':
+            self.task_distribution = np.ones(self.env.num_blocks+1)/(self.env.num_blocks+1)
         # MPI
         self.comm = MPI.COMM_WORLD
         self.nprocs = self.comm.Get_size()
@@ -203,15 +205,18 @@ class ddpg_agent:
             if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end:
                     best_success_rate = 0
+                    curriculum_param += self.args.curriculum_step
+                if self.args.curriculum_type == 'env_param':
                     path = self.model_path + f'/curr{curriculum_param:.2f}_model.pt'
                     torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), \
                         self.critic_network.state_dict()], path)
                     if self.args.wandb:
                         wandb.save(path)
                     print(f'save curriculum {curriculum_param:.2f} end model at {self.model_path}')
-                    curriculum_param += self.args.curriculum_step
-                if self.args.curriculum_type == 'env_param':
                     self.env.change(curriculum_param)
+                elif self.args.curriculum_type == 'task_distribution':
+                    self.env.change(self.task_distribution)
+                    print('current distribution:', self.task_distribution)
                 elif self.args.curriculum_type == 'dropout':
                     self.actor_network.dropout_vel_rate = curriculum_param
                     self.actor_target_network.dropout_vel_rate = curriculum_param
@@ -314,10 +319,19 @@ class ddpg_agent:
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
             # start to do the evaluation
             data = self._eval_agent(render = ((epoch%10)==0  and self.args.render))
-            if self.args.curriculum_reward:
-                curri_indicator = data['reward']
-            else:
-                curri_indicator = data['success_rate']
+            case_data = {}
+            for k,v in self.args.eval_kwargs.items():
+                if isinstance(v, list):
+                    for j in v:
+                        case_data[f'{k}{j:.2f}'] = self._eval_agent(render = ((epoch%10)==0  and self.args.render), eval_kwargs = {k:j})['success_rate']
+                else:
+                    case_data[k] = self._eval_agent(render = ((epoch%10)==0  and self.args.render), eval_kwargs = {k:v})['success_rate']
+            rates = []
+            for k,v in case_data.items():
+                rates.append(1/(v+0.3))
+            if len(case_data) > 0:
+                self.task_distribution = np.array(rates)/sum(rates)
+            curri_indicator = data[self.args.curriculum_indicator]
             # record relabel rate
             local_relabel_rate = self.her_module.relabel_num/self.her_module.total_sample_num
             local_random_relabel_rate = self.her_module.random_num/self.her_module.total_sample_num
@@ -343,17 +357,19 @@ class ddpg_agent:
                     print(f'save curriculum {curriculum_param:.2f} best model at {self.model_path}')
                 if self.args.wandb:
                     # log data
+                    log_data = {
+                        'success rate': data['success_rate'], 
+                        "reward": data['reward'], 
+                        "curriculum param": curriculum_param, 
+                        "run time": (time()-start_time)/3600, 
+                        "useless rollout per epoch": num_useless_rollout/(self.args.n_cycles*self.args.num_rollouts_per_mpi),
+                        "future relabel rate": self.global_relabel_rate, 
+                        "random relabel rate": global_random_relabel_rate, 
+                        "not change relabel rate": global_not_relabel_rate, 
+                        **case_data
+                    }
                     wandb.log(
-                        {
-                            'success rate': data['success_rate'], 
-                            "reward": data['reward'], 
-                            "curriculum param": curriculum_param, 
-                            "run time": (time()-start_time)/3600, 
-                            "useless rollout per epoch": num_useless_rollout/(self.args.n_cycles*self.args.num_rollouts_per_mpi),
-                            "future relabel rate": self.global_relabel_rate, 
-                            "random relabel rate": global_random_relabel_rate, 
-                            "not change relabel rate": global_not_relabel_rate, 
-                        }, 
+                        log_data, 
                         step=total_steps
                     )
             # reset record parameters
@@ -509,7 +525,7 @@ class ddpg_agent:
         
 
     # do the evaluation
-    def _eval_agent(self, render = False, eval_new_actor = False):
+    def _eval_agent(self, render = False, eval_new_actor = False, eval_kwargs = {}):
         total_success_rate = []
         total_reward = []
         # record video
@@ -518,7 +534,7 @@ class ddpg_agent:
         for n in range(self.args.n_test_rollouts):
             per_success_rate = []
             per_reward = []
-            observation = self.env.reset()
+            observation = self.env.reset(**eval_kwargs)
             obs = observation['observation']
             g = observation['desired_goal']
             extra_reset_steps = np.random.randint(self.env._max_episode_steps) if self.args.extra_reset_steps and np.random.uniform()<0.5 else 0
@@ -554,7 +570,7 @@ class ddpg_agent:
             total_success_rate.append(per_success_rate)
             total_reward.append(per_reward)
         if MPI.COMM_WORLD.Get_rank() == 0 and render and self.args.wandb:
-            wandb.log({"video": wandb.Video(np.array(video), fps=30, format="mp4")})
+            wandb.log({f"video{eval_kwargs}": wandb.Video(np.array(video), fps=30, format="mp4")})
         total_success_rate = np.array(total_success_rate)
         total_reward = np.array(total_reward)
         local_success_rate = np.mean(total_success_rate[:, -1])
