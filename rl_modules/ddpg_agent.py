@@ -120,7 +120,7 @@ class ddpg_agent:
         # load paramters
         if args.resume:
             if self.args.model_path == None:
-                path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name, 'model.pt')
+                path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name, 'latest_model.pt')
             else:
                 path = self.args.model_path
             o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
@@ -202,8 +202,9 @@ class ddpg_agent:
         total_steps = 0
         for epoch in range(self.args.n_epochs):
             # change task distribution
-            self.env.change(self.task_distribution)
-            print('current distribution:', self.task_distribution)
+            if 'use_task_distribution' in (self.args.env_kwargs.keys()):
+                self.env.change(self.task_distribution)
+                print('current distribution:', self.task_distribution)
             # start curriculum
             if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end:
