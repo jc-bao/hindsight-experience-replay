@@ -29,7 +29,7 @@ class ddpg_agent:
         self.args = args
         self.env = env
         self.env_params = env_params
-        if self.args.curriculum_type == 'task_distribution':
+        if 'use_task_distribution' in (self.args.env_kwargs.keys()):
             self.task_distribution = np.ones(self.env.num_blocks+1)/(self.env.num_blocks+1)
         # MPI
         self.comm = MPI.COMM_WORLD
@@ -201,22 +201,22 @@ class ddpg_agent:
         best_success_rate = 0
         total_steps = 0
         for epoch in range(self.args.n_epochs):
+            # change task distribution
+            self.env.change(self.task_distribution)
+            print('current distribution:', self.task_distribution)
             # start curriculum
             if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end:
                     best_success_rate = 0
                     curriculum_param += self.args.curriculum_step
-                if self.args.curriculum_type == 'env_param':
                     path = self.model_path + f'/curr{curriculum_param:.2f}_model.pt'
                     torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), \
                         self.critic_network.state_dict()], path)
                     if self.args.wandb:
                         wandb.save(path)
                     print(f'save curriculum {curriculum_param:.2f} end model at {self.model_path}')
+                if self.args.curriculum_type == 'env_param':
                     self.env.change(curriculum_param)
-                elif self.args.curriculum_type == 'task_distribution':
-                    self.env.change(self.task_distribution)
-                    print('current distribution:', self.task_distribution)
                 elif self.args.curriculum_type == 'dropout':
                     self.actor_network.dropout_vel_rate = curriculum_param
                     self.actor_target_network.dropout_vel_rate = curriculum_param
