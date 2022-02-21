@@ -49,6 +49,8 @@ def get_args():
     parser.add_argument('--trail-mode', type=str, default='all')
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--gui', action='store_true')
+    parser.add_argument('--store-trajectory', action='store_true')
+    parser.add_argument('--store-video', action='store_true')
     parser.add_argument('--dynamic-batch', action='store_true')
     parser.add_argument('--her-batch', action='store_true')
     parser.add_argument('--random-unmoved', action='store_true')

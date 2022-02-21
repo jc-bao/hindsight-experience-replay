@@ -197,6 +197,7 @@ class ddpg_agent:
         curriculum_param = self.args.curriculum_init
         curri_indicator = 0
         best_success_rate = 0
+        total_steps = 0
         for epoch in range(self.args.n_epochs):
             # start curriculum
             if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
@@ -260,6 +261,7 @@ class ddpg_agent:
                                     action = np.append(np.array([0,0,0,-1]), action[4:])
                             # feed the actions into the environment
                             observation_new, _, _, info = self.env.step(action)
+                            total_steps += 1
                             # self.env.render()
                             obs_new = observation_new['observation']
                             ag_new = observation_new['achieved_goal']
@@ -345,7 +347,7 @@ class ddpg_agent:
                             "random relabel rate": global_random_relabel_rate, 
                             "not change relabel rate": global_not_relabel_rate, 
                         }, 
-                        step=(epoch+1)*collect_per_epoch
+                        step=total_steps
                     )
             # reset record parameters
             self.her_module.total_sample_num = 1
