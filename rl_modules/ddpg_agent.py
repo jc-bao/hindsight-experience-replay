@@ -151,7 +151,8 @@ class ddpg_agent:
         self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=self.args.lr_actor)
         self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=self.args.lr_critic)
         # her sampler
-        self.her_module = her_sampler(self.args.replay_strategy, self.args.replay_k, self.env.compute_reward, random_unmoved = self.args.random_unmoved, not_relabel_unmoved = self.args.not_relabel_unmoved)
+        self.her_module = her_sampler(self.args.replay_strategy, self.args.replay_k, self.env.compute_reward, \
+            random_unmoved_rate = self.args.random_unmoved_rate, not_relabel_unmoved = self.args.not_relabel_unmoved)
         # goal sampler
         # self.goal_sampler = goal_sampler()
         # create the replay buffer

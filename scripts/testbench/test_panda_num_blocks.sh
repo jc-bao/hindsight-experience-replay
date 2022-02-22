@@ -4,5 +4,6 @@ python ../../train.py \
 --curriculum --curriculum-init 0.5 --curriculum-end 1 --curriculum-step 0.04 --curriculum-bar '-0.1' \
 --use-attn --num-blocks 4 \
 --eval-kwargs '{"num_need_handover": [0, 1]}' \
---env-kwargs '{"use_bound": true, "use_task_distribution": true}'
+--env-kwargs '{"use_bound": true, "use_task_distribution": true}' \
+--random-unmoved-rate 1 --not-relabel-unmoved
 # mpirun -np 2 

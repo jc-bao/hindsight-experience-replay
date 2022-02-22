@@ -12,10 +12,10 @@ def gcc_complie(c_path, so_path=None):
 	return so_path
 
 class her_sampler:
-    def __init__(self, replay_strategy, replay_k, reward_func=None, random_unmoved = False, not_relabel_unmoved = False):
+    def __init__(self, replay_strategy, replay_k, reward_func=None, random_unmoved_rate = False, not_relabel_unmoved = False):
         self.replay_strategy = replay_strategy
         self.replay_k = replay_k
-        self.random_unmoved = random_unmoved
+        self.random_unmoved_rate = random_unmoved_rate
         self.not_relabel_unmoved = not_relabel_unmoved
         if self.replay_strategy == 'future':
             self.future_p = 1 - (1. / (1 + replay_k))
@@ -60,8 +60,8 @@ class her_sampler:
             relabel_musk = np.repeat(relabel_musk, 3, axis=-1).reshape(sample_size, -1)
             random_musk = np.repeat(random_musk, 3, axis=-1).reshape(sample_size, -1)
             nochange_musk = np.repeat(nochange_musk, 3, axis=-1).reshape(sample_size, -1)
-            if self.random_unmoved:
-                random_goal = np.random.uniform([-0.4, -0.15, 0.02], [0.4, 0.15, 0.2], size=(sample_size, num_obj, 3)).reshape(sample_size, -1)
+            if np.random.uniform() < self.random_unmoved_rate:
+                random_goal = np.random.uniform([-0.4, -0.15, 0.02], [0.4, 0.15, 0.02], size=(sample_size, num_obj, 3)).reshape(sample_size, -1)
                 new_goal = future_ag*relabel_musk + old_goal*nochange_musk + random_goal*random_musk
             else:
                 new_goal = future_ag*relabel_musk + old_goal*np.logical_or(nochange_musk, random_musk) 
