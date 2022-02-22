@@ -30,7 +30,7 @@ class ddpg_agent:
         self.env = env
         self.env_params = env_params
         if 'use_task_distribution' in (self.args.env_kwargs.keys()):
-            self.task_distribution = np.ones(self.env.num_blocks+1)/(self.env.num_blocks+1)
+            self.other_side_rate = 0.6
         # MPI
         self.comm = MPI.COMM_WORLD
         self.nprocs = self.comm.Get_size()
@@ -203,8 +203,8 @@ class ddpg_agent:
         for epoch in range(self.args.n_epochs):
             # change task distribution
             if 'use_task_distribution' in (self.args.env_kwargs.keys()):
-                self.env.change(self.task_distribution)
-                print('current distribution:', self.task_distribution)
+                self.env.task.other_side_rate = self.other_side_rate
+                print('current os rate:', self.other_side_rate)
             # start curriculum
             if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
                 if curriculum_param < self.args.curriculum_end:
@@ -330,9 +330,9 @@ class ddpg_agent:
                     case_data[k] = self._eval_agent(render = ((epoch%10)==0  and self.args.render), eval_kwargs = {k:v})['success_rate']
             rates = []
             for k,v in case_data.items():
-                rates.append(1/(v+0.3))
+                rates.append(1/(v+0.1))
             if len(case_data) > 0:
-                self.task_distribution = np.array(rates)/sum(rates)
+                self.other_side_rate = 1 - np.array(rates)[0]/sum(rates)
             curri_indicator = data[self.args.curriculum_indicator]
             # record relabel rate
             local_relabel_rate = self.her_module.relabel_num/self.her_module.total_sample_num
@@ -370,6 +370,8 @@ class ddpg_agent:
                         "not change relabel rate": global_not_relabel_rate, 
                         **case_data
                     }
+                    if hasattr(self, 'other_side_rate'):
+                        log_data['other_side_rate'] = self.other_side_rate
                     wandb.log(
                         log_data, 
                         step=total_steps
