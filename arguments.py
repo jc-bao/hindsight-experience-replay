@@ -98,6 +98,6 @@ def get_args():
     # evaluate case
     # e.g. '{"num_need_handover": 0, "num_need_handover": 1}'
     parser.add_argument('--eval-kwargs', type=json.loads, default={})
-    parser.add_argument('--task-distribution', action='store_true')
+    parser.add_argument('--change-os-rate', action='store_true')
     args = parser.parse_args()
     return args

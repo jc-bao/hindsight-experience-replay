@@ -29,7 +29,7 @@ class ddpg_agent:
         self.args = args
         self.env = env
         self.env_params = env_params
-        if 'use_task_distribution' in (self.args.env_kwargs.keys()):
+        if self.args.change_os_rate:
             self.other_side_rate = 0.6
         # MPI
         self.comm = MPI.COMM_WORLD
@@ -203,7 +203,7 @@ class ddpg_agent:
         total_steps = 0
         for epoch in range(self.args.n_epochs):
             # change task distribution
-            if 'use_task_distribution' in (self.args.env_kwargs.keys()):
+            if self.args.change_os_rate:
                 self.env.task.other_side_rate = self.other_side_rate
                 print('current os rate:', self.other_side_rate)
             # start curriculum
