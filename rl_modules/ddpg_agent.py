@@ -17,6 +17,7 @@ from rl_modules.ma_models import actor_shared, actor_separated, actor_dropout, a
     actor_master_slave, actor_master, actor_attn_master_slave
 from mpi_utils.normalizer import normalizer
 from her_modules.her import her_sampler
+from her_modules.air import AIR
 import wandb
 from tqdm import tqdm
 
@@ -117,6 +118,10 @@ class ddpg_agent:
             assert args.resume, 'expert need model!'
             self.new_actor_loss  = []
             self.expert_network = actor(env_params).eval()
+        if self.args.use_air:
+            assert self.args.replay_strategy == 'none'
+            self.air = AIR(self.args.gamma, self.env.compute_reward, env_params, \
+                self.actor_target_network, self.critic_target_network, self._preproc_inputs)
         # load paramters
         if args.resume:
             if self.args.model_path == None:
@@ -304,6 +309,8 @@ class ddpg_agent:
                     mb_obs.append(ep_obs)
                     mb_ag.append(ep_ag)
                     mb_info.append(ep_info)
+                    if self.args.use_air:
+                        ep_g = self.air.get_goal(ep_obs, ep_ag)
                     mb_g.append(ep_g)
                     mb_actions.append(ep_actions)
                 # convert them into arrays

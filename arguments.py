@@ -93,6 +93,7 @@ def get_args():
     parser.add_argument('--extra-reset-steps', action='store_true')
     # hgg
     parser.add_argument('--hgg-pool-size', type = int, default = 1000)
+    parser.add_argument('--use-air', action='store_true')
     # environment config
     parser.add_argument('--env-kwargs', type=json.loads, default={})
     # evaluate case
