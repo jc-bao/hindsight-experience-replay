@@ -549,9 +549,7 @@ class ddpg_agent:
             observation = self.env.reset(**eval_kwargs)
             obs = observation['observation']
             g = observation['desired_goal']
-            extra_reset_steps = np.random.randint(self.env._max_episode_steps) if self.args.extra_reset_steps and np.random.uniform()<0.5 else 0
-            delay_agent = np.random.uniform()<0.5
-            for t in range(self.env_params['max_timesteps']+extra_reset_steps):
+            for t in range(self.env_params['max_timesteps']):
                 with torch.no_grad():
                     input_tensor = self._preproc_inputs(obs, g)
                     if self.args.learn_from_expert and eval_new_actor:
@@ -563,18 +561,12 @@ class ddpg_agent:
                         pi = self.actor_network(input_tensor)
                     # convert the actions
                     actions = pi.detach().cpu().numpy().squeeze()
-                if t < extra_reset_steps:
-                    if delay_agent:
-                        actions = np.append(actions[:4], np.array([0,0,0,-1]))
-                    else:
-                        actions = np.append(np.array([0,0,0,-1]), actions[4:])
                 observation_new, reward, _, info = self.env.step(actions)
                 # self.env.render(mode='human')
                 obs = observation_new['observation']
                 g = observation_new['desired_goal']
-                if t >= extra_reset_steps:
-                    per_success_rate.append(info['is_success'])
-                    per_reward.append(reward)
+                per_success_rate.append(info['is_success'])
+                per_reward.append(reward)
                 if MPI.COMM_WORLD.Get_rank() == 0 and render:
                     frame = np.array(self.env.render(mode = 'rgb_array'))
                     frame = np.moveaxis(frame, -1, 0)

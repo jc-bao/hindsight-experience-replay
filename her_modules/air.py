@@ -18,7 +18,7 @@ class AIR:
     def get_goal(self, ep_obs, ep_ag):
         ep_ag_next = np.array(ep_ag)[1:, :]
         # rew
-        # step_rew = self.reward_func(ep_ag_next, ep_ag_next.reshape(self.T, 1, -1).repeat(self.T,1), None) # dim2:goal_idx dim1:step-rew
+        # step_rew = self.reward_func(ep_ag_next, ep_ag_next.reshape(self.T, 1, -1).repeat(self.T,1), None) # dim2:goal_idx dim1:step-rewch
         # manually get the reward
         delta = np.linalg.norm(ep_ag_next.reshape(self.T, 1, -1).repeat(self.T,1) - ep_ag_next, axis=-1)
         step_rew = -(delta>0.05).astype(float)
