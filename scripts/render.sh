@@ -1,9 +1,9 @@
 python ../train.py \
---n-epochs 10 --n-cycles 0 --n-batches 0 --buffer-size 1000 --batch-size 32 --n-test-rollouts 10 \
---env-name PandaTowerBimanualParallel-v2 \
---resume --model-path '/Users/reedpan/Downloads/handover2_os08.pt' \
---env-kwargs '{"os_rate":1, "render":true, "obj_in_hand_rate":0, "subgoal_rate": 1, "reward_type": "final"}' \
---use-attn --num-blocks 4
+--n-epochs 10 --n-cycles 0 --n-batches 0 --buffer-size 1000 --batch-size 32 --n-test-rollouts 100 \
+--env-name PandaTowerBimanualSlow-v4 \
+--resume --model-path '/Users/reedpan/Downloads/1hand_3re_attn5.pt' \
+--env-kwargs '{"os_rate":0.8, "render":false, "obj_in_hand_rate":0, "max_num_need_handover": 1, "store_trajectory":true, "store_video":true}' \
+--use-attn --num-blocks 5
 
  # "use_bound": false, "store_trajectory":false, "store_video":false, "obj_in_hand_rate":0}' \
 # --extra-reset-steps

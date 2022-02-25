@@ -341,6 +341,7 @@ class ddpg_agent:
                 rates.append(1/(v+0.1))
             if len(case_data) > 0:
                 self.other_side_rate = 1 - np.array(rates)[0]/sum(rates)
+                data = {**data, **case_data}
             curri_indicator = data[self.args.curriculum_indicator]
             # record relabel rate
             local_relabel_rate = self.her_module.relabel_num/self.her_module.total_sample_num
