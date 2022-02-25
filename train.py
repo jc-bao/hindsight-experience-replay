@@ -59,6 +59,10 @@ def launch(args):
     #     'use_stand': False, 
     # }
     # env = gym.make('XarmHandover-v0', config = config)
+    if MPI.COMM_WORLD.Get_rank() < args.easy_env_num:
+        assert args.use_attn, 'Mix Env Only Support Attention Network'
+        args.env_kwargs['num_blocks'] -= 1
+        args.eval_kwargs = {}
     if 'formation' in args.env_name:
         import formation_gym
         env = formation_gym.make_env(args.env_name, benchmark=False, num_agents = args.num_agents, reward_type=args.reward_type)

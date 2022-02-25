@@ -128,7 +128,10 @@ class ddpg_agent:
                 path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name, 'latest_model.pt')
             else:
                 path = self.args.model_path
-            o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+            if self.args.shared_normalizer:
+                robot_dict, object_dict, goal_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
+            else:
+                o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             # OLD Version 
             # o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             print('loaded done!')
@@ -163,17 +166,26 @@ class ddpg_agent:
         # create the replay buffer
         self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
         # create the normalizer
-        self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
-        self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
-        if args.resume:
-            # Note: if use object number curriculum, the normalizer need to be extended
-            self.o_norm.load(o_dict)
-            self.g_norm.load(g_dict)
-            # OLD VERSION 
-            # self.o_norm.mean = o_mean
-            # self.o_norm.std = o_std
-            # self.g_norm.mean = g_mean
-            # self.g_norm.std = g_std
+        if self.args.shared_normalizer:
+            self.robot_norm = normalizer(size=env_params['robot_obs_size'], default_clip_range=self.args.clip_range)
+            self.object_norm = normalizer(size=env_params['obj_obs_size'], default_clip_range=self.args.clip_range)
+            self.goal_norm = normalizer(size=env_params['goal_size'], default_clip_range=self.args.clip_range)
+            if self.args.resume:
+                self.robot_norm.load(robot_dict)
+                self.object_norm.load(object_dict)
+                self.goal_norm.load(goal_dict)
+        else:
+            self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
+            self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
+            if args.resume:
+                # Note: if use object number curriculum, the normalizer need to be extended
+                self.o_norm.load(o_dict)
+                self.g_norm.load(g_dict)
+                # OLD VERSION 
+                # self.o_norm.mean = o_mean
+                # self.o_norm.std = o_std
+                # self.g_norm.mean = g_mean
+                # self.g_norm.std = g_std
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
             # if not os.path.exists(self.args.save_dir):
@@ -218,8 +230,11 @@ class ddpg_agent:
                     curriculum_param += self.args.curriculum_step
                     path = self.model_path + f'/curr{curriculum_param:.2f}_model.pt'
                     if MPI.COMM_WORLD.Get_rank() == 0:
-                        torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), \
-                            self.critic_network.state_dict()], path)
+                        if self.args.shared_normalizer:
+                            torch.save([self.robot_norm.state_dict(), self.object_norm.state_dict(), \
+                                self.goal_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], path)
+                        else:
+                            torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], path)
                         if self.args.wandb:
                             wandb.save(path)
                         print(f'save curriculum {curriculum_param:.2f} end model at {self.model_path}')
@@ -232,11 +247,12 @@ class ddpg_agent:
                     raise NotImplementedError
                 observation = self.env.reset()
                 # extend normalizer to new observation
+                if not self.args.shared_normalizer:
+                    self.o_norm.change_size(new_size = o_size)
+                    self.g_norm.change_size(new_size = g_size)
+                # extend buffer to new observation
                 o_size = len(observation['observation'])
                 g_size = len(observation['desired_goal'])
-                self.o_norm.change_size(new_size = o_size)
-                self.g_norm.change_size(new_size = g_size)
-                # extend buffer to new observation
                 self.buffer.change_size(max_timesteps=self.env._max_episode_steps,\
                     obs_size=o_size, goal_size=g_size)
             num_useless_rollout = 0 # record number of useless rollout(ag not change)
@@ -355,14 +371,24 @@ class ddpg_agent:
             if MPI.COMM_WORLD.Get_rank() == 0:
                 # save data
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
-                torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                if self.args.shared_normalizer:
+                    torch.save([self.robot_norm.state_dict(), self.object_norm.state_dict(), \
+                        self.goal_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                            self.model_path + '/latest_model.pt')
+                else:
+                    torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + '/latest_model.pt')
                 if self.args.wandb:
                     wandb.save(self.model_path + '/latest_model.pt')
                 if data['success_rate'] > best_success_rate:
                     best_success_rate = data['success_rate']
-                    torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
-                            self.model_path + f'/curr{curriculum_param:.2f}_best_model.pt')
+                    if self.args.shared_normalizer:
+                        torch.save([self.robot_norm.state_dict(), self.object_norm.state_dict(), \
+                            self.goal_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                                self.model_path + f'/curr{curriculum_param:.2f}_best_model.pt')
+                    else:
+                        torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
+                                self.model_path + f'/curr{curriculum_param:.2f}_best_model.pt')
                     if self.args.wandb:
                         wandb.save(self.model_path + f'/curr{curriculum_param:.2f}_best_model.pt')
                     print(f'save curriculum {curriculum_param:.2f} best model at {self.model_path}')
@@ -398,10 +424,24 @@ class ddpg_agent:
             x = self.env.obs_parser(x, mode='mirror')
             obs = x[..., :obs.shape[-1]]
             g = x[..., obs.shape[-1]:]
-        obs_norm = self.o_norm.normalize(obs)
-        g_norm = self.g_norm.normalize(g)
-        # concatenate the stuffs
-        inputs = np.concatenate((obs_norm, g_norm), axis=-1)
+        if self.args.shared_normalizer:
+            robot_norm = self.robot_norm.normalize(obs[..., :self.env_params['robot_obs_size']])
+            object_norm = np.zeros_like(obs[..., self.env_params['robot_obs_size']:])
+            for i in range(self.env.num_blocks):
+               object_norm[..., i*self.env_params['obj_obs_size']:(i+1)*self.env_params['obj_obs_size']] = \
+                   self.object_norm.normalize(
+                   obs[..., self.env_params['robot_obs_size'] + i*self.env_params['obj_obs_size']:\
+                       self.env_params['robot_obs_size'] + (i+1)*self.env_params['obj_obs_size']])
+            goal_norm = np.zeros_like(g)
+            for i in range(self.env.num_blocks):
+                goal_norm[..., i*self.env_params['goal_size']:(i+1)*self.env_params['goal_size']] = \
+                   self.goal_norm.normalize(obs[...,i*self.env_params['goal_size']:+ (i+1)*self.env_params['goal_size']])
+            inputs = np.concatenate((robot_norm, object_norm, goal_norm), axis=-1)
+        else:
+            obs_norm = self.o_norm.normalize(obs)
+            g_norm = self.g_norm.normalize(g)
+            # concatenate the stuffs
+            inputs = np.concatenate((obs_norm, g_norm), axis=-1)
         if not_unsqueeze:
             inputs = torch.tensor(inputs, dtype=torch.float32)
         else:
@@ -443,12 +483,21 @@ class ddpg_agent:
         obs, g = transitions['obs'], transitions['g']
         # pre process the obs and g
         transitions['obs'], transitions['g'] = self._preproc_og(obs, g)
-        # update
-        self.o_norm.update(transitions['obs'])
-        self.g_norm.update(transitions['g'])
-        # recompute the stats
-        self.o_norm.recompute_stats()
-        self.g_norm.recompute_stats()
+        if self.args.shared_normalizer:
+            self.goal_norm.update(transitions['g'].reshape(-1, self.env_params['goal_size']))
+            self.robot_norm.update(transitions['obs'][..., :self.env_params['robot_obs_size']])
+            self.object_norm.update(transitions['obs'][..., self.env_params['robot_obs_size']:]\
+                .reshape(-1, self.env_params['obj_obs_size']))
+            self.goal_norm.recompute_stats()
+            self.object_norm.recompute_stats()
+            self.robot_norm.recompute_stats()
+        else:
+            # update
+            self.o_norm.update(transitions['obs'])
+            self.g_norm.update(transitions['g'])
+            # recompute the stats
+            self.o_norm.recompute_stats()
+            self.g_norm.recompute_stats()
 
     def _preproc_og(self, o, g):
         o = np.clip(o, -self.args.clip_obs, self.args.clip_obs)
@@ -477,15 +526,19 @@ class ddpg_agent:
             transitions['obs'], transitions['g'] = self._preproc_og(o, g)
             transitions['obs_next'], transitions['g_next'] = self._preproc_og(o_next, g)
             # start to do the update
-            obs_norm = self.o_norm.normalize(transitions['obs'])
-            g_norm = self.g_norm.normalize(transitions['g'])
-            inputs_norm = np.concatenate([obs_norm, g_norm], axis=1)
-            obs_next_norm = self.o_norm.normalize(transitions['obs_next'])
-            g_next_norm = self.g_norm.normalize(transitions['g_next'])
-            inputs_next_norm = np.concatenate([obs_next_norm, g_next_norm], axis=1)
+            # obs_norm = self.o_norm.normalize(transitions['obs'])
+            # g_norm = self.g_norm.normalize(transitions['g'])
+            # inputs_norm = np.concatenate([obs_norm, g_norm], axis=1)
+            # inputs_norm = self._preproc_inputs(transitions['obs'], transitions['g'], not_unsqueeze=True)
+            # obs_next_norm = self.o_norm.normalize(transitions['obs_next'])
+            # g_next_norm = self.g_norm.normalize(transitions['g_next'])
+            # inputs_next_norm = np.concatenate([obs_next_norm, g_next_norm], axis=1)
+            # inputs_next_norm = self._preproc_inputs(transitions['obs_next'], transitions['g_next'], not_unsqueeze=True)
             # transfer them into the tensor
-            inputs_norm_tensor = torch.tensor(inputs_norm, dtype=torch.float32)
-            inputs_next_norm_tensor = torch.tensor(inputs_next_norm, dtype=torch.float32)
+            inputs_norm_tensor = self._preproc_inputs(transitions['obs'], transitions['g'], not_unsqueeze=True)
+            # inputs_norm_tensor = torch.tensor(inputs_norm, dtype=torch.float32)
+            inputs_next_norm_tensor = self._preproc_inputs(transitions['obs_next'], transitions['g_next'], not_unsqueeze=True)
+            # inputs_next_norm_tensor = torch.tensor(inputs_next_norm, dtype=torch.float32)
             actions_tensor = torch.tensor(transitions['actions'], dtype=torch.float32)
             r_tensor = torch.tensor(transitions['r'], dtype=torch.float32) 
             if self.args.cuda:

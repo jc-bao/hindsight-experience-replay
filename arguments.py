@@ -100,5 +100,8 @@ def get_args():
     # e.g. '{"num_need_handover": 0, "num_need_handover": 1}'
     parser.add_argument('--eval-kwargs', type=json.loads, default={})
     parser.add_argument('--change-os-rate', action='store_true')
+    parser.add_argument('--easy-env-num', type = int, default = 0)
+    parser.add_argument('--shared-normalizer', action='store_true')
+    parser.add_argument('--convert-seperate2shared', action='store_true')
     args = parser.parse_args()
     return args
