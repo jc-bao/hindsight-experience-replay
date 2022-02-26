@@ -515,6 +515,8 @@ class ddpg_agent:
             update_times = int(self.args.n_batches * self.buffer.current_size / self.buffer.size)
         elif self.args.her_batch:
             update_times = int(self.args.n_batches / self.global_relabel_rate)
+        elif self.args.fix_batch:
+            update_times = self.args.n_batches
         else:
             update_times = self.args.n_batches * int(self.env._max_episode_steps/50)
         

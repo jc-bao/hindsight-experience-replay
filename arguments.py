@@ -51,6 +51,7 @@ def get_args():
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--dynamic-batch', action='store_true')
     parser.add_argument('--her-batch', action='store_true')
+    parser.add_argument('--fix-batch', action='store_true')
     parser.add_argument('--random-unmoved-rate', type = float, default = 1)
     parser.add_argument('--not-relabel-unmoved', action='store_true')
     parser.add_argument('--model-path', default=None, type=str)
