@@ -117,3 +117,5 @@ saved_model/
 *.prof
 
 wandb/
+
+tmp*

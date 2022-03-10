@@ -20,40 +20,40 @@ ddpg with HER (MPI-version)
 
 """
 class ddpg_agent:
-    def __init__(self, args, env, env_params):
-        self.args = args
+    def __init__(self, config, env, env_params):
+        self.config = config
         self.env = env
         self.env_params = env_params
         # MPI
         self.comm = MPI.COMM_WORLD
         self.nprocs = self.comm.Get_size()
         # create the network and target network
-        if args.actor_shared:
+        if config.actor_shared:
             self.actor_network = actor_shared(env_params)
             self.actor_target_network = actor_shared(env_params)
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
-        elif args.actor_separated:
+        elif config.actor_separated:
             self.actor_network = actor_separated(env_params)
             self.actor_target_network = actor_separated(env_params)
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
-        elif args.use_renn:
+        elif config.use_renn:
             self.actor_network = actor_ReNN(env_params)
             self.actor_target_network = actor_ReNN(env_params)
             self.critic_network = critic_ReNN(env_params)
             self.critic_target_network = critic_ReNN(env_params)
-        elif args.use_bilinear:
+        elif config.use_bilinear:
             self.actor_network = actor_bilinear(env_params)
             self.actor_target_network = actor_bilinear(env_params)
             self.critic_network = critic_bilinear(env_params)
             self.critic_target_network = critic_bilinear(env_params)
-        elif args.use_critic_sum:
+        elif config.use_critic_sum:
             self.actor_network = actor(env_params)
             self.actor_target_network = actor(env_params)
             self.critic_network = critic_sum(env_params)
             self.critic_target_network = critic_sum(env_params)
-        elif args.use_attn:
+        elif config.use_attn:
             self.actor_network = actor_attn(env_params)
             self.actor_target_network = actor_attn(env_params)
             self.critic_network = critic_attn(env_params)
@@ -63,21 +63,18 @@ class ddpg_agent:
             self.actor_target_network = actor(env_params)
             self.critic_network = critic(env_params)
             self.critic_target_network = critic(env_params)
-        if self.args.fix_critic:
-            self.critic_network.eval()
-            self.critic_target_network.eval()
         # load paramters
-        if args.resume:
-            if self.args.model_path == None:
-                path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name, 'model.pt')
+        if config.resume:
+            if self.config.model_path == None:
+                path = os.path.join(self.config.save_dir, self.config.env_name, self.config.name, 'model.pt')
             else:
-                path = self.args.model_path
+                path = self.config.model_path
             try:
                 o_dict, g_dict, actor_model, critic_model = torch.load(path, map_location=lambda storage, loc: storage)
             except:
                 print('fail to load the model!')
             print('loaded done!')
-            if not self.args.not_resume_actor:
+            if not self.config.not_resume_actor:
                 self.actor_network.load_state_dict(actor_model)
             self.critic_network.load_state_dict(critic_model)
         # sync the networks across the cpus
@@ -87,41 +84,41 @@ class ddpg_agent:
         self.actor_target_network.load_state_dict(self.actor_network.state_dict())
         self.critic_target_network.load_state_dict(self.critic_network.state_dict())
         # if use gpu
-        if self.args.cuda:
+        if self.config.cuda:
             self.actor_network.cuda()
             self.critic_network.cuda()
             self.actor_target_network.cuda()
             self.critic_target_network.cuda()
         # create the optimizer
-        self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=self.args.lr_actor)
-        self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=self.args.lr_critic)
+        self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=self.config.lr_actor)
+        self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=self.config.lr_critic)
         # her sampler
-        self.her_module = her_sampler(self.args.replay_strategy, self.args.replay_k, self.env.compute_reward, random_unmoved = self.args.random_unmoved, not_relabel_unmoved = self.args.not_relabel_unmoved)
+        self.her_module = her_sampler(self.config.replay_strategy, self.config.replay_k, self.env.compute_reward, random_unmoved = self.config.random_unmoved, not_relabel_unmoved = self.config.not_relabel_unmoved)
         # create the replay buffer
-        self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
+        self.buffer = replay_buffer(self.env_params, self.config.buffer_size, self.her_module.sample_her_transitions)
         # create the normalizer
-        self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
-        self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
-        if args.resume:
+        self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.config.clip_range)
+        self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.config.clip_range)
+        if config.resume:
             # Note: if use object number curriculum, the normalizer need to be extended
             self.o_norm.load(o_dict)
             self.g_norm.load(g_dict)
         # create the dict for store the model
         if MPI.COMM_WORLD.Get_rank() == 0:
-            # if not os.path.exists(self.args.save_dir):
-            #     os.mkdir(self.args.save_dir, exist_ok=True)
+            # if not os.path.exists(self.config.save_dir):
+            #     os.mkdir(self.config.save_dir, exist_ok=True)
             # path to save the model
-            self.model_path = os.path.join(self.args.save_dir, self.args.env_name, self.args.name)
+            self.model_path = os.path.join(self.config.save_dir, self.config.env_name, self.config.name)
             if not os.path.exists(self.model_path):
                 os.makedirs(self.model_path)
             # start wandb to log
-            if self.args.wandb:
+            if self.config.wandb:
                 wandb.init(
-                    project = self.args.project,
-                    group = self.args.group,
-                    tags = self.args.tags, 
-                    name = self.args.name,
-                    notes = f'Env:{self.args.env_name},Note:{self.args.note}'
+                    project = self.config.project,
+                    group = self.config.group,
+                    tags = self.config.tags, 
+                    name = self.config.name,
+                    notes = f'Env:{self.config.env_name},Note:{self.config.note}'
                 )
 
     def learn(self):
@@ -130,19 +127,19 @@ class ddpg_agent:
 
         """
         # warm up
-        if self.args.warmup:
+        if self.config.warmup:
             self.warmup(100)
         # start to collect samples
         start_time = time()
-        collect_per_epoch = self.args.n_cycles * self.args.num_rollouts_per_mpi * self.env_params['max_timesteps']
+        collect_per_epoch = self.config.n_cycles * self.config.num_rollouts_per_mpi * self.env_params['max_timesteps']
         global_relabel_rate = 0.3
-        curriculum_param = self.args.curriculum_init
+        curriculum_param = self.config.curriculum_init
         curri_indicator = 0
-        for epoch in range(self.args.n_epochs):
+        for epoch in range(self.config.n_epochs):
             # start curriculum
-            if self.args.curriculum and curri_indicator > self.args.curriculum_bar:
-                if curriculum_param < self.args.curriculum_end:
-                    curriculum_param += self.args.curriculum_step
+            if self.config.curriculum and curri_indicator > self.config.curriculum_bar:
+                if curriculum_param < self.config.curriculum_end:
+                    curriculum_param += self.config.curriculum_step
                 self.env.change(curriculum_param)
                 observation = self.env.reset()
                 # extend normalizer to new observation
@@ -154,11 +151,11 @@ class ddpg_agent:
                 self.buffer.change_size(max_timesteps=self.env._max_episode_steps,\
                     obs_size=o_size, goal_size=g_size)
             num_useless_rollout = 0 # record number of useless rollout(ag not change)
-            for _ in tqdm(range(self.args.n_cycles)):
+            for _ in tqdm(range(self.config.n_cycles)):
                 mb_obs, mb_ag, mb_g, mb_info, mb_actions = [], [], [], [], []
-                for _ in range(self.args.num_rollouts_per_mpi):
+                for _ in range(self.config.num_rollouts_per_mpi):
                     # try until collect successful experience
-                    for j in range(self.args.max_trail_time):
+                    for j in range(self.config.max_trail_time):
                         # reset the rollouts
                         ep_obs, ep_ag, ep_g, ep_info, ep_actions = [], [], [], [], []
                         # reset the environment
@@ -188,10 +185,10 @@ class ddpg_agent:
                             obs = obs_new
                             ag = ag_new
                         # check if use this rollout
-                        if_moved = np.linalg.norm(ag.reshape(-1,self.args.dim) - ag_origin.reshape(-1,self.args.dim), axis=-1) > 0.005
-                        if self.args.trail_mode == 'all':
+                        if_moved = np.linalg.norm(ag.reshape(-1,self.config.dim) - ag_origin.reshape(-1,self.config.dim), axis=-1) > 0.005
+                        if self.config.trail_mode == 'all':
                             if_moved = if_moved.all()
-                        elif self.args.trail_mode == 'any':
+                        elif self.config.trail_mode == 'any':
                             if_moved = if_moved.any()
                         else:
                             raise NotImplementedError
@@ -215,12 +212,12 @@ class ddpg_agent:
                 # store the episodes
                 self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_info, mb_actions])
                 self._update_normalizer([mb_obs, mb_ag, mb_g, mb_info, mb_actions])
-                if self.args.dynamic_batch: # update according to buffer size
-                    update_times = int(self.args.n_batches * self.buffer.current_size / self.buffer.size)
-                elif self.args.her_batch:
-                    update_times = int(self.args.n_batches / global_relabel_rate)
+                if self.config.dynamic_batch: # update according to buffer size
+                    update_times = int(self.config.n_batches * self.buffer.current_size / self.buffer.size)
+                elif self.config.her_batch:
+                    update_times = int(self.config.n_batches / global_relabel_rate)
                 else:
-                    update_times = self.args.n_batches
+                    update_times = self.config.n_batches
                 for _ in range(update_times):
                     # train the network
                     self._update_network()
@@ -228,8 +225,8 @@ class ddpg_agent:
                 self._soft_update_target_network(self.actor_target_network, self.actor_network)
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
             # start to do the evaluation
-            data = self._eval_agent(render = ((epoch%10)==0  and self.args.render))
-            if self.args.curriculum_reward:
+            data = self._eval_agent(render = ((epoch%10)==0  and self.config.render))
+            if self.config.curriculum_reward:
                 curri_indicator = data['reward']
             else:
                 curri_indicator = data['success_rate']
@@ -247,7 +244,7 @@ class ddpg_agent:
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}, reward is: {:.3f}'.format(datetime.now(), epoch, data['success_rate'], data['reward']))
                 torch.save([self.o_norm.state_dict(), self.g_norm.state_dict(), self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + '/model.pt')
-                if self.args.wandb:
+                if self.config.wandb:
                     # log data
                     wandb.log(
                         {
@@ -255,7 +252,7 @@ class ddpg_agent:
                             "reward": data['reward'], 
                             "curriculum param": curriculum_param, 
                             "run time": (time()-start_time)/3600, 
-                            "useless rollout per epoch": num_useless_rollout/(self.args.n_cycles*self.args.num_rollouts_per_mpi),
+                            "useless rollout per epoch": num_useless_rollout/(self.config.n_cycles*self.config.num_rollouts_per_mpi),
                             "future relabel rate": global_relabel_rate, 
                             "random relabel rate": global_random_relabel_rate, 
                             "not change relabel rate": global_not_relabel_rate, 
@@ -275,7 +272,7 @@ class ddpg_agent:
         # concatenate the stuffs
         inputs = np.concatenate([obs_norm, g_norm])
         inputs = torch.tensor(inputs, dtype=torch.float32).unsqueeze(0)
-        if self.args.cuda:
+        if self.config.cuda:
             inputs = inputs.cuda()
         return inputs
 
@@ -307,19 +304,19 @@ class ddpg_agent:
         self.g_norm.recompute_stats()
 
     def _preproc_og(self, o, g):
-        o = np.clip(o, -self.args.clip_obs, self.args.clip_obs)
-        g = np.clip(g, -self.args.clip_obs, self.args.clip_obs)
+        o = np.clip(o, -self.config.clip_obs, self.config.clip_obs)
+        g = np.clip(g, -self.config.clip_obs, self.config.clip_obs)
         return o, g
 
     # soft update
     def _soft_update_target_network(self, target, source):
         for target_param, param in zip(target.parameters(), source.parameters()):
-            target_param.data.copy_((1 - self.args.polyak) * param.data + self.args.polyak * target_param.data)
+            target_param.data.copy_((1 - self.config.polyak) * param.data + self.config.polyak * target_param.data)
 
     # update the network
     def _update_network(self):
         # sample the episodes
-        transitions = self.buffer.sample(self.args.batch_size)
+        transitions = self.buffer.sample(self.config.batch_size)
         # pre-process the observation and goal
         o, o_next, g = transitions['obs'], transitions['obs_next'], transitions['g']
         transitions['obs'], transitions['g'] = self._preproc_og(o, g)
@@ -336,7 +333,7 @@ class ddpg_agent:
         inputs_next_norm_tensor = torch.tensor(inputs_next_norm, dtype=torch.float32)
         actions_tensor = torch.tensor(transitions['actions'], dtype=torch.float32)
         r_tensor = torch.tensor(transitions['r'], dtype=torch.float32) 
-        if self.args.cuda:
+        if self.config.cuda:
             inputs_norm_tensor = inputs_norm_tensor.cuda()
             inputs_next_norm_tensor = inputs_next_norm_tensor.cuda()
             actions_tensor = actions_tensor.cuda()
@@ -348,10 +345,10 @@ class ddpg_agent:
             actions_next = self.actor_target_network(inputs_next_norm_tensor)
             q_next_value = self.critic_target_network(inputs_next_norm_tensor, actions_next)
             q_next_value = q_next_value.detach()
-            target_q_value = r_tensor + self.args.gamma * q_next_value
+            target_q_value = r_tensor + self.config.gamma * q_next_value
             target_q_value = target_q_value.detach()
             # clip the q value
-            clip_return = 1 / (1 - self.args.gamma)
+            clip_return = 1 / (1 - self.config.gamma)
             target_q_value = torch.clamp(target_q_value, -clip_return, 0)
         # the q loss
         real_q_value = self.critic_network(inputs_norm_tensor, actions_tensor)
@@ -359,7 +356,7 @@ class ddpg_agent:
         # the actor loss
         actions_real = self.actor_network(inputs_norm_tensor)
         actor_loss = -self.critic_network(inputs_norm_tensor, actions_real).mean()
-        actor_loss += self.args.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
+        actor_loss += self.config.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
         # start to update the network
         self.actor_optim.zero_grad()
         actor_loss.backward()
@@ -378,7 +375,7 @@ class ddpg_agent:
         # record video
         if MPI.COMM_WORLD.Get_rank() == 0:
             video = []
-        for n in range(self.args.n_test_rollouts):
+        for n in range(self.config.n_test_rollouts):
             per_success_rate = []
             per_reward = []
             observation = self.env.reset()
@@ -401,7 +398,7 @@ class ddpg_agent:
                     video.append(frame)
             total_success_rate.append(per_success_rate)
             total_reward.append(per_reward)
-        if MPI.COMM_WORLD.Get_rank() == 0 and render and self.args.wandb:
+        if MPI.COMM_WORLD.Get_rank() == 0 and render and self.config.wandb:
             wandb.log({"video": wandb.Video(np.array(video), fps=30, format="mp4")})
         total_success_rate = np.array(total_success_rate)
         total_reward = np.array(total_reward)

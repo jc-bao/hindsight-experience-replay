@@ -3,11 +3,23 @@ import torch.nn as nn
 import numpy as np
 
 def scaled_dot_product_attention(q, k, v, mask=None):
+    """dot prodect for self attention
+
+    Args:
+        q (tensor): query (batch_size, seq_len_q)
+        k (tensor): key (batch_size, seq_len_k)
+        v (tensor): value (batch_size, seq_len_v)
+        mask (tensor, optional): 1 is dropout, (batch_size, num_objects)
+
+    Returns:
+        tensor: feature and weights 
+    """
     matmul_qk = torch.matmul(q, k.transpose(-2, -1))  # (..., seq_len_q, seq_len_k)
     dk = k.shape[-1]
     scaled_qk = matmul_qk / np.sqrt(dk)
-    if mask is not None:
-        scaled_qk += (mask * -1e9)  # 1: we don't want it, 0: we want it
+    if mask is not None: #
+        scaled_qk -= mask.unsqueeze(1).repeat(1, 3, 1) * 1e9 
+        scaled_qk -= mask.unsqueeze(2).repeat(1, 1, 3) * 1e9 
     attention_weights = nn.functional.softmax(scaled_qk, dim=-1)  # (..., seq_len_q, seq_len_k)
     output = torch.matmul(attention_weights, v)  # (..., seq_len_q, feature_dim)
     return output, attention_weights
@@ -28,14 +40,14 @@ class SelfAttentionBase(nn.Module):
         x = torch.transpose(x, 1, 2)  # (batch_size, n_heads, seq_len, depth)
         return x
 
-    def forward(self, q, k, v, mask):
+    def forward(self, q, k, v, mask = None):
         assert len(q.size()) == 3
         q = self.q_linear(q)
         k = self.k_linear(k)
         v = self.v_linear(v)
         q_heads = self.split_head(q)
         k_heads = self.split_head(k)
-        v_heads = self.split_head((v))
+        v_heads = self.split_head(v)
         # mask = torch.unsqueeze(mask, dim=1).unsqueeze(dim=2)  # (batch_size, 1, 1, seq_len)
         attention_out, weights = scaled_dot_product_attention(q_heads, k_heads, v_heads, mask)
         attention_out = torch.transpose(attention_out, 1, 2)  # (batch_size, seq_len_q, n_heads, depth)
@@ -68,10 +80,10 @@ class SelfAttentionExtractor(nn.Module):
         self.layer_norm2 = nn.ModuleList(
             [nn.LayerNorm(hidden_size) for _ in range(n_attention_blocks)])   
     
-    def forward(self, x):
+    def forward(self, x, mask = None):
         features = self.embed(x)
         for i in range(self.n_attention_blocks):
-            attn_output = self.attention_blocks[i](features, features, features, mask = None)
+            attn_output = self.attention_blocks[i](features, features, features, mask=None)
             out1 = self.layer_norm1[i](features + attn_output)
             ffn_out = self.feed_forward_network[i](out1)
             features = self.layer_norm2[i](ffn_out)
@@ -139,7 +151,7 @@ class CrossAttentionExtractor(nn.Module):
         return torch.cat([robot_embedding, weighted_feature], dim=-1)  # (batch_size, hidden_size)
 
 class actor_attn(nn.Module):
-    def __init__(self, env_params, cross=False, num_blocks=4, dropout_vel_rate = 0):
+    def __init__(self, env_params, cross=False, num_blocks=3, dropout_vel_rate = 0):
         super(actor_attn, self).__init__()
         self.dropout_vel_rate = dropout_vel_rate
         self.max_action = env_params['action_max']
@@ -157,10 +169,10 @@ class actor_attn(nn.Module):
         )
         self._initialize()
 
-    def forward(self, x):
+    def forward(self, x, mask = None):
         # robot_obs, objects_obs, masks = self.parse_obs(obs)
         x = self.preprocess(x)
-        features = self.feature_extractor(x)
+        features = self.feature_extractor(x, mask)
         actions = self.max_action * self.mlp(features)
         return actions
 
@@ -190,7 +202,7 @@ class actor_attn(nn.Module):
 
 
 class critic_attn(nn.Module):
-    def __init__(self, env_params, cross=False, num_blocks = 4):
+    def __init__(self, env_params, cross=False, num_blocks = 3):
         super(critic_attn, self).__init__()
         self.max_action = env_params['action_max']
         self.goal_size = env_params['goal_size']
@@ -207,10 +219,10 @@ class critic_attn(nn.Module):
         )
         self._initialize()
 
-    def forward(self, x, actions):
+    def forward(self, x, actions, mask = None):
         # robot_obs, objects_obs, masks = self.parse_obs(obs)
         x = self.preprocess(x, actions)
-        features = self.feature_extractor(x)
+        features = self.feature_extractor(x, mask = mask)
         q_value = self.mlp(features)
         return q_value
 

@@ -6,11 +6,12 @@ the replay buffer here is basically from the openai baselines code
 
 """
 class replay_buffer:
-    def __init__(self, env_params, buffer_size, sample_func):
+    def __init__(self, env_params, buffer_size, sample_func, store_info = []):
         self.env_params = env_params
         self.T = env_params['max_timesteps']
         self.size = buffer_size // self.T
         # memory management
+        self.store_info = store_info
         self.current_size = 0
         self.n_transitions_stored = 0
         self.sample_func = sample_func
@@ -18,9 +19,10 @@ class replay_buffer:
         self.buffers = {'obs': np.empty([self.size, self.T + 1, self.env_params['obs']]),
                         'ag': np.empty([self.size, self.T + 1, self.env_params['goal']]),
                         'g': np.empty([self.size, self.T, self.env_params['goal']]),
-                        'info': np.empty([self.size, self.T], dtype=dict),
                         'actions': np.empty([self.size, self.T, self.env_params['action']]),
                         }
+        for k in store_info:
+            self.buffers[k] = np.empty([self.size, self.T, self.env_params[k]])
         # thread lock
         self.lock = threading.Lock()
     
@@ -34,7 +36,8 @@ class replay_buffer:
             self.buffers['obs'][idxs] = mb_obs
             self.buffers['ag'][idxs] = mb_ag
             self.buffers['g'][idxs] = mb_g
-            self.buffers['info'][idxs] = mb_info
+            for k in self.store_info:
+                self.buffers[k][idxs] = mb_info[k]
             self.buffers['actions'][idxs] = mb_actions
             self.n_transitions_stored += self.T * batch_size
     
@@ -77,6 +80,5 @@ class replay_buffer:
         self.buffers = {'obs': np.empty([self.size, self.T + 1, obs_size]),
                         'ag': np.empty([self.size, self.T + 1, goal_size]),
                         'g': np.empty([self.size, self.T, goal_size]),
-                        'info': np.empty([self.size, self.T], dtype=dict),
                         'actions': np.empty([self.size, self.T, self.env_params['action']]),
                         }

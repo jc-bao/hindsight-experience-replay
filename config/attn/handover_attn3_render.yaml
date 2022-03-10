@@ -1,0 +1,84 @@
+# wandb
+wandb: false
+project: debug
+group: none
+tags: 
+name: none
+note: 'Aim: Expect:'
+render: true
+dim: 3 # to identify goal move
+
+# env
+# env_name: PandaRearrangeBimanual-v0
+env_name: PandaTowerBimanual-v0
+env_kwargs: 
+  render: true
+  # ignore_obj_rate: 0
+  # task_kwargs:
+  #   num_blocks: 1
+  #   obj_in_hand_rate: 0
+num_envs: 1
+clip_obs: 200
+
+# explore
+noise_eps: 0.2
+random_eps: 0.3
+trail_mode: any
+max_trail_time: 10
+warmup: false
+extra_reset_steps: false
+
+# train
+cuda: false
+seed: 123
+n_epochs: 10
+n_cycles: 0
+num_rollouts_per_mpi: 2
+update_per_step: 0
+batch_size: 256
+action_l2: 1
+lr_actor: 0.001
+lr_critic: 0.001
+polyak: 0.95
+q_coef: 1
+
+# eval
+eval_kwargs: {}
+n_test_rollouts: 10
+
+# normalizer
+clip_range: 5
+shared_normalizer: false
+
+# curriculum
+curriculum: true
+curriculum_indicator: 'success_rate'
+curriculum_attr: 'num_blocks'
+curriculum_init: 0.5
+curriculum_end: 0
+curriculum_step: -0.1
+curriculum_bar: 0.8
+
+# network:
+actor_model: actor_attn
+actor_kwargs: {'num_blocks': 3}
+critic_model: critic_attn
+critic_kwargs: {'num_blocks': 3}
+
+# replay
+buffer_size: 100
+store_info: ['mask']
+replay_strategy: future
+replay_k: 4
+use_air: false
+random_unmoved_rate: 1
+not_relabel_unmoved: true
+
+# save 
+resume: true
+model_path: /Users/reedpan/Downloads/curr1.00_best_model.pt
+save_interval: 5
+save_dir: saved_models/
+
+# rl base
+gamma: 0.98

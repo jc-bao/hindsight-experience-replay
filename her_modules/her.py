@@ -69,18 +69,18 @@ class her_sampler:
             new_goal = future_ag
         transitions['g'][her_indexes] = new_goal
         # to get the params to re-compute reward
-        transitions['r'] = np.expand_dims([self.reward_func(transitions['ag_next'][i], transitions['g'][i], transitions['info'][i]) for i in range(len(transitions['g']))], 1)
+        transitions['r'] = np.expand_dims([self.reward_func(transitions['ag_next'][i], transitions['g'][i], None) for i in range(len(transitions['g']))], 1)
         transitions = {k: transitions[k].reshape(batch_size, *transitions[k].shape[1:]) for k in transitions.keys()}
- 
+        
         return transitions
 
 # class goal_sampler:
-#     def __init__(self, args, env, env_params, hgg_pool_size = 1000):
-#         self.args = args
+#     def __init__(self, config, env, env_params, hgg_pool_size = 1000):
+#         self.config = config
 #         self.env = env
 #         self.dim = env_params['goal_size']
 #         self.delta = self.env.task.distance_threshold # thereshold
-# 		self.length = args.n_cycles*args.num_rollouts_per_mpi # goal collected per episode
+# 		self.length = config.n_cycles*config.num_rollouts_per_mpi # goal collected per episode
 # 		init_goal = self.env.reset()['achieved_goal'].copy()
 #         # use pool to store goal candidate
 # 		self.pool = np.tile(init_goal[np.newaxis,:],[self.length,1])+np.random.normal(0,self.delta,size=(self.length,self.dim))
@@ -101,7 +101,7 @@ class her_sampler:
 
 #     def add_noise(self, pre_goal, noise_std=None):
 # 		goal = pre_goal.copy()
-# 		dim = 2 if self.args.env[:5]=='Fetch' else self.dim
+# 		dim = 2 if self.config.env[:5]=='Fetch' else self.dim
 # 		if noise_std is None: noise_std = self.delta
 # 		goal[:dim] += np.random.normal(0, noise_std, size=dim)
 # 		return goal.copy()
@@ -119,7 +119,7 @@ class her_sampler:
 #             candidate_edges = [] # if use this trajectory
 #             candidate_id = []
 #             # revaluate Q 
-#             agent = self.args.agent
+#             agent = self.config.agent
 #             achieved_value = []
 #             for i in range(len(achieved_pool)):
 #                 obs = [ goal_concat(achieved_pool_init_state[i], achieved_pool[i][j]) for  j in range(achieved_pool[i].shape[0])]
@@ -127,7 +127,7 @@ class her_sampler:
 #                     agent.raw_obs_ph: obs
 #                 }
 #                 value = agent.sess.run(agent.q_pi, feed_dict)[:,0]
-#                 value = np.clip(value, -1.0/(1.0-self.args.gamma), 0)
+#                 value = np.clip(value, -1.0/(1.0-self.config.gamma), 0)
 #                 achieved_value.append(value.copy())
 
 #             n = 0
@@ -145,8 +145,8 @@ class her_sampler:
 #                 self.match_lib.add(0, graph_id['achieved'][i], 1, 0)
 #             for i in range(len(achieved_pool)):
 #                 for j in range(len(desired_goals)):
-#                     res = np.sqrt(np.sum(np.square(achieved_pool[i]-desired_goals[j]),axis=1)) - achieved_value[i]/(self.args.hgg_L/self.max_dis/(1-self.args.gamma))
-#                     match_dis = np.min(res)+goal_distance(achieved_pool[i][0], initial_goals[j])*self.args.hgg_c
+#                     res = np.sqrt(np.sum(np.square(achieved_pool[i]-desired_goals[j]),axis=1)) - achieved_value[i]/(self.config.hgg_L/self.max_dis/(1-self.config.gamma))
+#                     match_dis = np.min(res)+goal_distance(achieved_pool[i][0], initial_goals[j])*self.config.hgg_c
 #                     match_idx = np.argmin(res)
 
 #                     edge = self.match_lib.add(graph_id['achieved'][i], graph_id['desired'][j], 1, c_double(match_dis))

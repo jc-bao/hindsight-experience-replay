@@ -1,9 +1,11 @@
 python ../train.py \
---n-epochs 10 --n-cycles 0 --n-batches 0 --buffer-size 1000 --batch-size 32 --n-test-rollouts 100 \
---env-name PandaTowerBimanualSlow-v4 \
---resume --model-path '/Users/reedpan/Downloads/1hand_3re_attn5.pt' \
---env-kwargs '{"os_rate":0.8, "render":false, "obj_in_hand_rate":0, "max_num_need_handover": 1, "store_trajectory":true, "store_video":true}' \
---use-attn --num-blocks 5
+--n-epochs 10 --n-cycles 0 --n-batches 0 --buffer-size 1000 --batch-size 32 --n-test-rollouts 10 \
+--env-name PandaTowerBimanual-v1 \
+--resume --model-path '/Users/reedpan/Downloads/1obj_best_model.pt' \
+--env-kwargs '{"os_rate":0.5, "render":true, "goal_in_obj_rate": 0, "goal_range": [0.4, 0.3, 0], "obj_in_hand_rate": 0}' \
+--use-attn --num-blocks 3
+# --shared-normalizer \
+# --extra-reset-steps
 
  # "use_bound": false, "store_trajectory":false, "store_video":false, "obj_in_hand_rate":0}' \
 # --extra-reset-steps
