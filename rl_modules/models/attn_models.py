@@ -83,7 +83,7 @@ class SelfAttentionExtractor(nn.Module):
     def forward(self, x, mask = None):
         features = self.embed(x)
         for i in range(self.n_attention_blocks):
-            attn_output = self.attention_blocks[i](features, features, features, mask=None)
+            attn_output = self.attention_blocks[i](features, features, features, mask=mask)
             out1 = self.layer_norm1[i](features + attn_output)
             ffn_out = self.feed_forward_network[i](out1)
             features = self.layer_norm2[i](ffn_out)

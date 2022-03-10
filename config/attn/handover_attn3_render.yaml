@@ -30,7 +30,7 @@ extra_reset_steps: false
 
 # train
 cuda: false
-seed: 123
+seed: 124
 n_epochs: 10
 n_cycles: 0
 num_rollouts_per_mpi: 2
